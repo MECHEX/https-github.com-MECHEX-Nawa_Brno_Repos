@@ -1,117 +1,140 @@
-
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 from pathlib import Path
 from typing import Dict, Optional
-import numpy as np
+import re
 import pandas as pd
 import matplotlib.pyplot as plt
-import re
 
-# Stałe (lokalne, aby nie wymagać innych plików)
 DEFAULT_DPI = 160
-COL_BAND_ID = "band_id"
+MS = 2  # mniejsze znaczniki
+
+# nazwy kolumn
 COL_Z_M     = "z [m]"
+COL_Y_M     = "y [m]"
 COL_H_WM2K  = "h[W/m2K]"
-COL_RE      = "Re[-]"
-COL_NU      = "Nu[-]"
 COL_F       = "f_fanning[-]"
 COL_DP_BAND = "Δp_band[Pa]"
 COL_DP_SUM  = "Δp_sum[Pa]"
 
-# --- utils ---
+AXIS_CANDIDATES = (COL_Z_M, COL_Y_M)
+
 def _ensure_dir(d: Path) -> None:
     d.mkdir(parents=True, exist_ok=True)
 
 def _legend_below(ax, title: Optional[str] = None):
-    ax.legend(title=title, loc="upper center", bbox_to_anchor=(0.5, -0.15),
+    ax.legend(title=title, loc="upper center", bbox_to_anchor=(0.5, -0.16),
               ncol=4, frameon=False)
 
-# -------- overlaye po z (osobno Fluid1/Fluid2) --------
+def _pick_axis_col(df: pd.DataFrame) -> Optional[str]:
+    for c in AXIS_CANDIDATES:
+        if c in df.columns:
+            return c
+    return None
+
+def _sanitize(name: str) -> str:
+    return re.sub(r"[^A-Za-z0-9_.-]+", "_", name)
+
+# ---------- OVERLAY: tylko h, f, Δp_band ----------
 def make_overlays_per_fluid(bands_by_step: Dict[int, pd.DataFrame],
                             fluid_name: str,
                             out_dir: Path) -> None:
-    """Rysuje overlaye (po z) dla kolumn [h, Re, Nu, f, Δp_band, Δp_sum].
-       Legendą jest numer kroku (Step).
-    """
+    """Overlaye (po osi z/y): h, f, Δp_band. Legenda = Step. Osobno dla Fluid1/Fluid2."""
     if not bands_by_step:
         return
     _ensure_dir(out_dir)
 
     specs = [
-        (COL_H_WM2K,  "h [W/m²K]",   False, "overlay_h__{}.png"),
-        (COL_RE,      "Re [-]",      False, "overlay_Re__{}.png"),
-        (COL_NU,      "Nu [-]",      False, "overlay_Nu__{}.png"),
-        (COL_F,       "f_Fanning [-]",False, "overlay_f__{}.png"),
-        (COL_DP_BAND, "Δp (band) [Pa]", True, "overlay_dp_band__{}.png"),
-        (COL_DP_SUM,  "Δp (cumulative) [Pa]", True, "overlay_dp_sum__{}.png"),
+        (COL_H_WM2K,  "h [W/m²K]",      False, f"overlay_h__{fluid_name}.png"),
+        (COL_F,       "f_Fanning [-]",  False, f"overlay_f__{fluid_name}.png"),
+        (COL_DP_BAND, "Δp (band) [Pa]", True,  f"overlay_dp_band__{fluid_name}.png"),
     ]
 
-    # sortuj po Step dla spójnej palety
-    for col, ylabel, reverse_x, fname_tpl in specs:
+    for col, ylabel, reverse_x, fname in specs:
         fig, ax = plt.subplots()
         plotted = 0
+        axis_name_for_xlabel = None
+
         for step in sorted(bands_by_step.keys()):
             df = bands_by_step[step]
-            if col not in df.columns or COL_Z_M not in df.columns:
+            axis_col = _pick_axis_col(df)
+            if axis_col is None or col not in df.columns:
                 continue
-            x = df[COL_Z_M].values
+
+            x = df[axis_col].values
             y = df[col].values
-            if reverse_x:
-                ax.plot(x[::-1], y[::-1], marker="o", ms=3, lw=1, label=f"S{step:05d}")
-            else:
-                ax.plot(x, y, marker="o", ms=3, lw=1, label=f"S{step:05d}")
+            axis_name_for_xlabel = axis_col
+
+            # dla Δp wygodniej od wylotu do wlotu, jeśli oś rośnie
+            if reverse_x and x[0] < x[-1]:
+                x = x[::-1]; y = y[::-1]
+
+            ax.plot(x, y, marker="o", ms=MS, lw=1, label=f"S{step:05d}")
             plotted += 1
 
         if plotted == 0:
             plt.close(fig)
             continue
 
-        ax.set_xlabel("z [m]")
+        ax.set_xlabel(axis_name_for_xlabel or "coord [m]")
         ax.set_ylabel(ylabel)
         ax.grid(True, alpha=0.3)
         _legend_below(ax, title=f"{fluid_name}: Step")
-        out_path = out_dir / (fname_tpl.format(fluid_name))
+        out_path = out_dir / fname
         fig.savefig(out_path, dpi=DEFAULT_DPI, bbox_inches="tight")
         plt.close(fig)
         print(f"[OK] Overlay → {out_path}")
 
-# -------- wykresy średnich vs Step / Time --------
-def _sanitize(name: str) -> str:
-    return re.sub(r'[^A-Za-z0-9_.-]+', '_', name)
-
-
+# ---------- MEAN: tylko mean_h, mean_f, mean_Δp_sum — WYŁĄCZNIE vs Time[s] ----------
 def plot_summary_vs_step(df: pd.DataFrame, out_dir: Path, dt: Optional[float] = None):
-    """Rysuje wykresy mean_* vs Step, oraz (jeśli dt podano) równoległe mean_* vs Time[s]."""
+    """Rysuje mean_h, mean_f, mean_Δp_sum vs Time[s]. Osobno dla Fluid1/Fluid2.
+    Wyjątek: mean h dla Fluid2 – bez zmiany zakresu Y. Pozostałe – zakres rozszerzony o 200%."""
     _ensure_dir(out_dir)
 
-    # znajdź kolumny ze średnimi
-    mean_cols = [c for c in df.columns if c.startswith("mean_")]
-    if not mean_cols:
-        print("[INFO] Brak kolumn mean_* do wykreślenia.")
+    if "Time[s]" not in df.columns:
+        print("[ERR] Brak kolumny 'Time[s]' w summary. Ustaw dt_for_plots w main.py (DT_S != None).")
         return
 
-    # 1) vs Step
-    for col in mean_cols:
-        fig, ax = plt.subplots()
-        ax.plot(df["Step"].values, df[col].values, marker="o", lw=1)
-        ax.set_xlabel("Step [-]")
-        ax.set_ylabel(col.replace("mean_", "").replace("[", " ["))
-        ax.grid(True, alpha=0.3)
-        out_path = out_dir / f"{_sanitize(col)}__vs__Step.png"
-        fig.savefig(out_path, dpi=DEFAULT_DPI, bbox_inches="tight")
-        plt.close(fig)
-        print(f"[OK] {out_path}")
+    desired = {"mean_h[W/m2K]", "mean_f_fanning[-]", "mean_Δp_sum[Pa]"}
+    mean_cols = [c for c in df.columns if c in desired]
+    if not mean_cols:
+        print("[INFO] Brak kolumn mean_h/mean_f/mean_Δp_sum do wykreślenia.")
+        return
 
-    # 2) vs Time[s], jeśli mamy dt
-    if dt is not None and "Time[s]" in df.columns:
+    def _ylabel(col: str) -> str:
+        return col.replace("mean_", "").replace("[", " [")
+
+    fluids = sorted(df["Fluid"].unique()) if "Fluid" in df.columns else [None]
+    for fluid in fluids:
+        gdf = df[df["Fluid"] == fluid] if fluid is not None else df
+        gdf = gdf.sort_values("Time[s]")
+        tag = f"__{fluid}" if fluid is not None else ""
+
         for col in mean_cols:
+            y = gdf[col].values
+            if y.size == 0:
+                continue
+            y_min, y_max = float(y.min()), float(y.max())
+
             fig, ax = plt.subplots()
-            ax.plot(df["Time[s]"].values, df[col].values, marker="o", lw=1)
+            ax.plot(gdf["Time[s]"].values, y, marker="o", ms=MS, lw=1)
             ax.set_xlabel("Time [s]")
-            ax.set_ylabel(col.replace("mean_", "").replace("[", " ["))
-            ax.grid(True, alpha=0.3)
-            out_path = out_dir / f"{_sanitize(col)}__vs__Time_s.png"
+            ax.set_ylabel(_ylabel(col))
+            ax.grid(True, alpha=1.0)
+
+            # — skala Y:
+            # 1) Nie zmieniaj skali dla mean h w Fluid2
+            if not (fluid == "Fluid2" and col == "mean_h[W/m2K]"):
+                if y_max == y_min:
+                    # sensowny zapas przy płaskiej serii: 200% wartości lub co najmniej 2.0
+                    pad = 30.0 * max(1.0, abs(y_max))
+                else:
+                    # 200% rozszerzenia = dodajemy pełny zakres po obu stronach (nowy zakres = 3×)
+                    pad = 10.0 * (y_max - y_min)
+                ax.set_ylim(y_min - pad, y_max + pad)
+
+            out_path = out_dir / f"{_sanitize(col)}__vs__Time_s{tag}.png"
             fig.savefig(out_path, dpi=DEFAULT_DPI, bbox_inches="tight")
             plt.close(fig)
             print(f"[OK] {out_path}")
+

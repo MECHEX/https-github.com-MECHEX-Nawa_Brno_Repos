@@ -84,21 +84,36 @@ def parse_srp(path: Path, *, verbose: bool = False) -> SRPData:
 
     A_env_single: Optional[float] = None
 
+    if verbose:
+        print(f"[DEBUG] Parsing file: {path}")
+        print(f"[DEBUG] Total lines: {n}")
+
     i = 0
     while i < n:
         line = lines[i]
+        if verbose:
+            print(f"[DEBUG] Processing line {i}: {line}")
 
         # --- AREA [m^2] (przekroje i zwilżona powierzchnia pasm) ---
         if "Area" in line and "[m^2]" in line:
+            if verbose:
+                print("[DEBUG] Found AREA section")
             j = i + 1
             while j < n and not RE_DASH.search(lines[j]):  # idź do linii '----'
                 j += 1
             if j < n:
                 table, i2 = _collect_rows(lines, j)
                 table = _norm_table(table)
+                if verbose:
+                    print(f"[DEBUG] AREA table: {table}")
                 # envelope_xy (czasem występuje)
                 if "envelope_xy" in table:
                     A_env_single = table["envelope_xy"]
+                    if verbose:
+                        print(f"[DEBUG] Found envelope_xy: {A_env_single}")
+                else:
+                    if verbose:
+                        print("[DEBUG] envelope_xy not found in AREA table")
                 # ziso_i -> pole przekroju
                 for k, v in table.items():
                     if k.startswith("ziso_"):
@@ -118,6 +133,8 @@ def parse_srp(path: Path, *, verbose: bool = False) -> SRPData:
         if ("Average" in line) and (
             "Temperature" in line or (i + 1 < n and "Temperature" in lines[i + 1])
         ):
+            if verbose:
+                print("[DEBUG] Found TEMPERATURE section")
             # przejdź do linii '----' oddzielającej nagłówek od tabeli
             j = i + 1
             while j < n and not RE_DASH.search(lines[j]):
@@ -140,6 +157,8 @@ def parse_srp(path: Path, *, verbose: bool = False) -> SRPData:
 
         # --- STATIC PRESSURE [Pa] ---
         if ("Area-Weighted Average" in line) and (i + 1 < n and "Static Pressure" in lines[i + 1]):
+            if verbose:
+                print("[DEBUG] Found STATIC PRESSURE section")
             j = i + 1
             while j < n and not RE_DASH.search(lines[j]):
                 j += 1
@@ -155,6 +174,8 @@ def parse_srp(path: Path, *, verbose: bool = False) -> SRPData:
 
         # --- MASS FLOW RATE [kg/s] ---
         if "Mass Flow Rate" in line and "[kg/s]" in line:
+            if verbose:
+                print("[DEBUG] Found MASS FLOW RATE section")
             j = i + 1
             while j < n and not RE_DASH.search(lines[j]):
                 j += 1
@@ -231,13 +252,22 @@ def parse_srp(path: Path, *, verbose: bool = False) -> SRPData:
         i += 1
 
     if verbose:
-        print(f"[PARSE] planes: T={len(planes_Tmass)} P={len(planes_P)} A={len(planes_A)} "
-              f"mdot={len(planes_mdot)} rho={len(planes_rho)} mu={len(planes_mu)} k={len(planes_k)}")
-        print(f"[PARSE] bands : Awet={len(bands_Awet)} Q={len(bands_Q)} Tw={len(bands_Tw)}; A_env={A_env_single}")
+        print(f"[DEBUG] Final parsed data: Tmass={len(planes_Tmass)}, P={len(planes_P)}, A={len(planes_A)}, mdot={len(planes_mdot)}, rho={len(planes_rho)}, mu={len(planes_mu)}, k={len(planes_k)}, Awet={len(bands_Awet)}, Q={len(bands_Q)}, Tw={len(bands_Tw)}, A_env={A_env_single}")
+
+    # Ensure A_env_single is always included in the returned tuple
+    if A_env_single is None:
+        A_env_single = 0.0  # Default value if envelope_xy is missing
 
     return SRPData(
-        planes_Tmass=planes_Tmass, planes_P=planes_P, planes_A=planes_A,
-        planes_mdot=planes_mdot, planes_rho=planes_rho, planes_mu=planes_mu, planes_k=planes_k,
+        planes_Tmass=planes_Tmass,
+        planes_P=planes_P,
+        planes_A=planes_A,
+        planes_mdot=planes_mdot,
+        planes_rho=planes_rho,
+        planes_mu=planes_mu,
+        planes_k=planes_k,
         A_env_single=A_env_single,
-        bands_Awet=bands_Awet, bands_Q=bands_Q, bands_Tw=bands_Tw,
+        bands_Awet=bands_Awet,
+        bands_Q=bands_Q,
+        bands_Tw=bands_Tw,
     )
