@@ -4017,3 +4017,13 @@ Transient_Repo/TransientFigs/csv/Sim_Data_Fluid2_M101_S01050__bands.csv
 Transient_Repo/TransientFigs/csv/Sim_Data_Fluid2_M101_S01050__norm.srp
 Transient_Repo/TransientFigs/csv/Sim_Data_Fluid2_M101_S01100__bands.csv
 Transient_Repo/TransientFigs/csv/Sim_Data_Fluid2_M101_S01100__norm.srp
+
+*.csv
+
+*.png
+
+*.srp
+
+*.7z
+
+*.html

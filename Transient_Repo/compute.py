@@ -62,6 +62,33 @@ def build_bands_df(data) -> pd.DataFrame:
             COL_TW_K:  _finite_or_nan(data.bands_Tw.get(bi)),
         })
     return pd.DataFrame(rows, columns=cols).sort_values(COL_BAND_ID).reset_index(drop=True)
+import numpy as np
+
+def _lmtd_wall_band(Tw: float, T_in: float, T_out: float, eps: float = 1e-12) -> float:
+    """
+    Log-mean ΔT między temperaturą ścianki a temperaturą płynu na wejściu/wyjściu pasma.
+    Zabezpieczenia:
+      - gdy ΔT1 ≈ ΔT2 → zwraca średnią arytm. (zachowanie graniczne LMTD),
+      - gdy ΔT zmienia znak (ΔT1*ΔT2<=0) → zwraca uśrednienie po modułach (z zachowaniem znaku dominującego).
+    """
+    dT1 = float(Tw - T_in)
+    dT2 = float(Tw - T_out)
+
+    # identyczne lub bardzo bliskie → granica LMTD = średnia arytm.
+    if abs(dT1 - dT2) <= eps:
+        return 0.5 * (dT1 + dT2)
+
+    # klasyczny LMTD: tylko gdy ten sam znak i brak degeneracji
+    if dT1 * dT2 > 0.0 and abs(dT1) > eps and abs(dT2) > eps:
+        try:
+            return (dT1 - dT2) / np.log(dT1 / dT2)
+        except FloatingPointError:
+            # awaryjnie wróć do średniej arytm.
+            return 0.5 * (dT1 + dT2)
+
+    # zmiana znaku (LMTD nieokreślony) → użyj uśrednienia po modułach z dominującym znakiem
+    sign = np.sign(dT1) if abs(dT1) >= abs(dT2) else np.sign(dT2)
+    return sign * 0.5 * (abs(dT1) + abs(dT2))
 
 def compute_band_table(planes_df: pd.DataFrame,
                        bands_df: pd.DataFrame,
@@ -181,14 +208,13 @@ def compute_band_table(planes_df: pd.DataFrame,
             dp_sum += dp_band
 
         # T_bulk
-        T_bulk = np.nanmean([T_i, T_ip])
+        # T_bulk = np.nanmean([T_i, T_ip])
+        dT_lm = abs(_lmtd_wall_band(T_w, T_i, T_ip))
 
         # h
         h = np.nan
-        if np.isfinite(Q_w) and np.isfinite(A_wet) and A_wet > tiny and np.isfinite(T_w) and np.isfinite(T_bulk):
-            dT = abs(T_w - T_bulk)
-            if dT > tiny:
-                h = float(abs(Q_w) / (A_wet * dT))
+        if np.isfinite(Q_w) and np.isfinite(A_wet) and A_wet > tiny and np.isfinite(T_w) and np.isfinite(dT_lm):
+            h = float(abs(Q_w) / (A_wet * dT_lm))
 
         # U
         U = np.nan
@@ -228,7 +254,7 @@ def compute_band_table(planes_df: pd.DataFrame,
             out_col: coord_out,
             COL_DP_BAND: dp_band,
             COL_DP_SUM: dp_sum if np.isfinite(dp_sum) else np.nan,
-            COL_TBAND_K: T_bulk,
+            COL_TBAND_K: dT_lm,
             COL_A_WET: A_wet,
             COL_Q_W: Q_w,
             COL_TW_K: T_w,
