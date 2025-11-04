@@ -4027,3 +4027,5 @@ Transient_Repo/TransientFigs/csv/Sim_Data_Fluid2_M101_S01100__norm.srp
 *.7z
 
 *.html
+
+*.pyc
