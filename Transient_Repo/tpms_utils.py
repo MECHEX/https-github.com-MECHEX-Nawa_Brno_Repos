@@ -5,11 +5,11 @@ from typing import Dict, List, Tuple, Optional
 import re
 import math
 
-from constants import AXIS_CANDIDATES
+# Oś X (z/y) – kandydaci
+AXIS_CANDIDATES = ("z [m]", "y [m]")
 
 STEP_RE = re.compile(r"_S(\d{4,})", re.IGNORECASE)
 
-# ---------- małe utilsy ----------
 def ensure_dir(d: Path) -> None:
     d.mkdir(parents=True, exist_ok=True)
 
@@ -59,7 +59,6 @@ def parts_tag(parts: List[str]) -> str:
     return ("p" + "".join(map(str, nums))) if nums else "p"
 
 def outfile_suffix(fluid: str, parts: List[str], t0: float, t1: float, dt: float) -> str:
-    """Zwraca sufiks do nazw plików: 'F2_p3_t10-11s_1e-5s'."""
     ftag = "F1" if fluid == "Fluid1" else "F2"
     ptag = parts_tag(parts)
     ttag = fmt_time_tag(t0, t1)
@@ -73,12 +72,8 @@ def mode_tag(n_steps: Optional[int], duration_s: Optional[float]) -> str:
         return f"D{fmt_scalar_short(float(duration_s))}s"
     return "ALL"
 
-# ---------- SRP indeks ----------
+# ----- SRP indeks i filtry -----
 def collect_all_data(base_dir: Path, PARTS: Dict[str, Dict[str, float]]) -> Dict[str, Dict[str, List[Tuple[float, str, Path]]]]:
-    """
-    parts -> fluid -> [(t_local[s], part_name, path)] posortowane po czasie lokalnym.
-    t_local = step * dt_sim_s (dla danego partu).
-    """
     out: Dict[str, Dict[str, List[Tuple[float, str, Path]]]] = {}
     for part, meta in PARTS.items():
         dt = float(meta["dt_sim_s"])
@@ -101,7 +96,6 @@ def filter_by_local_window(items: List[Tuple[float, str, Path]], t_len: float) -
     return [t for t in items if (-1e-12) <= t[0] <= (t_len + 1e-12)]
 
 def filter_by_global_window(items: List[Tuple[float, str, Path]], t_start: float, t0: float, t1: float) -> List[Tuple[float, str, Path]]:
-    """Filtr wg CZASU GLOBALNEGO: t_global = t_start + t_local ∈ [t0, t1]."""
     out = []
     for (t_local, part_name, path) in items:
         t_global = t_start + t_local
@@ -109,21 +103,12 @@ def filter_by_global_window(items: List[Tuple[float, str, Path]], t_start: float
             out.append((t_local, part_name, path))
     return out
 
-# ---------- okna czasu dla jobów ----------
+# ----- Okna czasu dla zwykłych jobów -----
 def resolve_time_window_for_job(parts: List[str], PARTS: Dict[str, Dict[str, float]],
-                                t0_s: Optional[float], n_steps: Optional[int], duration_s: Optional[float]) -> Tuple[str, float, float, float]:
-    """
-    Zwraca (mode, t0, t1, dt_ref).
-    - mode: 'ALL' / 'N...' / 'D...'
-    - t0,t1: do użycia w nazwach i filtrze globalnym (dla N/D)
-    - dt_ref: referencyjne dt do etykiet nazw
-    Walidacja: dokładnie jeden z (n_steps, duration_s) lub żaden.
-    """
-    # referencyjne dt z pierwszego partu (ostrzeganie o niespójności zostaw w main)
+                                t0_s, n_steps, duration_s):
     dt_ref = float(PARTS[parts[0]]["dt_sim_s"]) if parts else 0.0
 
     if (n_steps is None) and (duration_s is None):
-        # ALL → użyj pełnego zakresu (t0,t1 tylko do nazwy folderu/raportu)
         tmins = [float(PARTS[p]["t_start_s"]) for p in parts if p in PARTS]
         tmaxs = [float(PARTS[p]["t_end_s"])   for p in parts if p in PARTS]
         t0 = min(tmins) if tmins else 0.0
@@ -142,7 +127,6 @@ def resolve_time_window_for_job(parts: List[str], PARTS: Dict[str, Dict[str, flo
         t0 = float(t0_s); t1 = t0 + int(n_steps) * dt_ref
         return (mode_tag(n_steps, None), t0, t1, dt_ref)
 
-    # duration_s
     if float(duration_s) <= 0.0:
         raise ValueError("duration_s musi być > 0.")
     t0 = float(t0_s); t1 = t0 + float(duration_s)

@@ -34,27 +34,57 @@ PLOT_JOBS: List[Dict] = [
         "plots": ["overlay", "mean"], 
         "metrics": ["h", "f"]
     },
-    {
-        "parts": ["part4"],          
-        "fluids": ["Fluid1", "Fluid2"], 
-        "plots": ["overlay"], 
-        "metrics": ["h", "f"],
-        "t0_s": 3.0, 
-        "duration_s": 8.0, 
+]
+
+COMPARE_JOBS = [
+  {
+    "name": "cmp_P1P3P4_F12_hf_dtavg_SS",
+    "plots":   ["overlay", "mean"],
+    "metrics": ["h", "f"],
+
+    "overlay": {
+      "time_avg": {"mode": "mean", "weights": "auto"},
+      "shade": "std"
     },
-    {
-        "parts": ["part1", "part2"], 
-        "fluids": ["Fluid1", "Fluid2"], 
-        "plots": ["overlay", "mean"], 
-        "metrics": ["h", "f"]
-    },
-    {
-        "parts": ["part3"],          
-        "fluids": ["Fluid1", "Fluid2"], 
-        "plots": ["overlay", "mean"], 
-        "metrics": ["h", "f"],
+    "mean": {
+      "time_mode": "aligned",
+      "ma_windows": [50],
+      "ma_center": False,
+      "ma_edges": "strict",
+      "show_raw": False
     },
 
+    # <––– NOWE: steady tylko dla tego joba
+    "steady": {
+      "enabled": True,
+      # ścieżka relatywna względem Transient_Repo (tj. folderu z main.py)
+      "base_csv_dir": r"..\Steady_Repo\DataProcessed\csv",
+      "use_in_overlay": True,
+      "use_in_mean": True,
+      "cases": {
+        "Fluid1": [
+          {"label": "M006", "file": "Sim_Data_Fluid1_M006.csv"},
+          {"label": "M007", "file": "Sim_Data_Fluid1_M007.csv"},
+        ],
+        "Fluid2": [
+          {"label": "M006", "file": "Sim_Data_Fluid2_M006.csv"},
+          {"label": "M007", "file": "Sim_Data_Fluid2_M007.csv"},
+        ],
+      },
+      # wagi do średniej globalnej (dla linii w mean)
+      "mean_weights": {"h": "A_wet[m2]", "f": None}
+    },
+
+    "series": [
+      {"label": "Part1", "parts": ["part1"], "fluid": "Fluid1", "t0_s": 3.0, "t1_s": 4.0},
+      {"label": "Part3", "parts": ["part3"], "fluid": "Fluid1", "t0_s": 10.0, "t1_s": 11.0},
+      {"label": "Part4", "parts": ["part4"], "fluid": "Fluid1", "t0_s": 4.0, "t1_s": 5.0},
+
+      {"label": "Part1", "parts": ["part1"], "fluid": "Fluid2", "t0_s": 3.0, "t1_s": 4.0},
+      {"label": "Part3", "parts": ["part3"], "fluid": "Fluid2", "t0_s": 10.0, "t1_s": 11.0},
+      {"label": "Part4", "parts": ["part4"], "fluid": "Fluid2", "t0_s": 4.0, "t1_s": 5.0},
+    ],
+  }
 ]
 
 # Konfiguracja osi / kroku długości (m) dla płynów
