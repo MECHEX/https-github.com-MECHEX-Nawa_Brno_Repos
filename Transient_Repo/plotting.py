@@ -161,7 +161,11 @@ def plot_mean_with_mas(
                     y_all.append(y[m])
         y_concat = np.concatenate(y_all)
         y_min, y_max = float(np.min(y_concat)), float(np.max(y_concat))
-        pad = 2.0 * max(1.0, abs(y_max)) if y_max == y_min else (y_max - y_min)
+        rng = y_max - y_min
+        if rng <= 0:
+            pad = 0.1 * max(1.0, abs(y_max))  # przypadek stałej serii
+        else:
+            pad = 0.10 * rng
         ax.set_ylim(y_min - pad, y_max + pad)
 
     # --- NAZWA PLIKU: dołóż tag MA, jeśli są serie MA ---

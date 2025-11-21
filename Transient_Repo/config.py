@@ -11,12 +11,13 @@ PARTS: Dict[str, Dict[str, float]] = {
     "part1": {"t_start_s": 0.0,  "t_end_s": 5.0,  "dt_sim_s": 0.0005},
     "part2": {"t_start_s": 5.0,  "t_end_s": 10.0, "dt_sim_s": 0.0005},
     "part3": {"t_start_s": 10.0, "t_end_s": 11.0, "dt_sim_s": 0.0001},
+    "part4": {"t_start_s": 0.0, "t_end_s": 10.0, "dt_sim_s": 0.00025},
 }
 
 # USTAWIENIA RYSOWANIA 2D
 PLOT_DEFAULTS = {
     "dpi": 400,
-    "marker_size": 0.3,
+    "marker_size": 0.05,
     "line_width": 0.4,
     "overlay_every": 1,     # co ile serii rysować w overlay
     "include_pressure": False,  # dorzucaj Δp_band (overlay) i Δp_sum (mean)
@@ -28,15 +29,18 @@ PLOT_DEFAULTS = {
 #  - D sekund:   {"t0_s": 10.0, "duration_s": 0.5}
 PLOT_JOBS: List[Dict] = [
     {
-        "parts":       ["part3"],
-        "fluids":      ["Fluid1"],
-        "plots":       ["mean"],          # overlay opcjonalnie
-        "metrics":     ["h", "f"],           
-
-        "mean_ma_fluids": ["Fluid1"],
-        "mean_ma_windows": [4, 8, 12, 16],
-        "mean_ma_edges": "strict",
-        "mean_ma_center": True,
+        "parts": ["part4"],
+        "fluids": ["Fluid1", "Fluid2"], 
+        "plots": ["overlay", "mean"], 
+        "metrics": ["h", "f"]
+    },
+    {
+        "parts": ["part4"],          
+        "fluids": ["Fluid1", "Fluid2"], 
+        "plots": ["overlay"], 
+        "metrics": ["h", "f"],
+        "t0_s": 3.0, 
+        "duration_s": 8.0, 
     },
     {
         "parts": ["part1", "part2"], 
@@ -49,22 +53,6 @@ PLOT_JOBS: List[Dict] = [
         "fluids": ["Fluid1", "Fluid2"], 
         "plots": ["overlay", "mean"], 
         "metrics": ["h", "f"],
-    },
-    {
-        "parts": ["part1"],          
-        "fluids": ["Fluid2"], 
-        "plots": ["overlay"], 
-        "metrics": ["h"],
-        "t0_s": 0.0, 
-        "n_steps": 15*20, 
-    },
-    {
-        "parts": ["part1", "part2"],          
-        "fluids": ["Fluid2"], 
-        "plots": ["overlay"], 
-        "metrics": ["h"],
-        "t0_s": 2.0, 
-        "duration_s": 8.0, 
     },
 
 ]
