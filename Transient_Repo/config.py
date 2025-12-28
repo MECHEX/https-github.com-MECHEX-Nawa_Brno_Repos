@@ -99,6 +99,46 @@ COMPARE_JOBS = [
       "show_raw": False
     },
 
+    # --- NOWE: większe figury + dpi per job ---
+    "fig": {
+      "dpi": 450,
+      "overlay": {"figsize": (14.0, 5.2)},
+      "mean":    {"figsize": (14.0, 5.2)},
+    },
+
+    # --- NOWE: globalne ustawienia serii (porównawcze) ---
+    "plot": {
+      "base_lw": 1.0,        # bazowa grubość linii
+      "base_ms": 5.0,        # bazowy rozmiar markera
+      "raw_alpha": 0.35,     # jeśli mean.show_raw = True
+      "ma_alpha": 0.6,      # linia MA
+      "raw_lw_scale": 0.85,  # mnożnik lw dla raw
+      "ma_lw_scale": 1.00,   # mnożnik lw dla MA
+      "ref_ls": ":",         # steady reference (mean)
+      "ref_alpha": 0.90,
+
+      "marker_mode": "random",
+      "marker_target": 16,   # ok. 8 markerów na linię
+      "marker_seed": 56,   # zmień aby dostać inny rozkład 
+    },
+
+    # --- NOWE: style per etykieta serii ---
+    "style_map": {
+      # Fluid1
+      "Part1": {"color": "#1f77b4", "ls": "-",  "marker": "o", "lw_scale": 1.00, "ms_scale": 1.00},
+      "Part3": {"color": "#ff7f0e", "ls": "--", "marker": "s", "lw_scale": 1.00, "ms_scale": 1.00},
+      "Part4": {"color": "#2ca02c", "ls": "-.", "marker": "^", "lw_scale": 1.00, "ms_scale": 1.00},
+      "Part5": {"color": "#d62728", "ls": ":",  "marker": "D", "lw_scale": 1.15, "ms_scale": 1.10},
+      "Part6": {"color": "#9467bd", "ls": "-",  "marker": "v", "lw_scale": 1.15, "ms_scale": 1.10},
+      "Part7": {"color": "#8c564b", "ls": "--", "marker": "P"},
+      "Part8": {"color": "#e377c2", "ls": "-.", "marker": "X"},
+      "Part9": {"color": "#7f7f7f", "ls": ":",  "marker": "*"},
+
+      # Steady (overlay: linia profilu; mean: linia pozioma)
+      "M006 SS": {"color": "#000000", "ls": ":", "lw": 2.2, "marker": None},
+      "M007 SS": {"color": "#444444", "ls": ":", "lw": 2.2, "marker": None},
+    },
+
     # <––– NOWE: steady tylko dla tego joba
     "steady": {
       "enabled": True,

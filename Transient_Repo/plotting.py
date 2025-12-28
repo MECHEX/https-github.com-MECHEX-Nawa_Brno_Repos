@@ -10,6 +10,8 @@ import re
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
+from style import StyleResolver
+
 from constants import (
     COL_Z_M, COL_Y_M,
     COL_H_WM2K, COL_F, COL_DP_BAND, COL_DP_SUM,
@@ -169,16 +171,60 @@ def _plot_line(ax, x, y, st: Dict, *, alpha: float = 1.0, label: Optional[str] =
     Wrapper around ax.plot(...) that returns the Line2D handle,
     then applies custom dash patterns via _apply_dash().
     """
+    # per-line overrides (compare plots need per-series lw/ms)
+    lw = float(st.get("lw", LW))
+    ms = float(st.get("ms", MS))
+    ls = st.get("ls", "-")
+    color = st.get("color", "#000000")
+    marker = st.get("marker", None)
+    markevery = st.get("markevery", None)
+
+    # marker cosmetics
+    mfc = st.get("mfc", None)
+    mec = st.get("mec", None)
+    mew = st.get("mew", None)
+
+    # final alpha = caller alpha * style alpha
+    a = float(alpha) * float(st.get("alpha", 1.0))
+
     (line,) = ax.plot(
-        x, y,
-        lw=LW, ls=st["ls"], color=st["color"],
-        marker=st["marker"], ms=MS,
-        markevery=st["markevery"],
-        alpha=alpha,
+        x,
+        y,
+        lw=lw,
+        ls=ls,
+        color=color,
+        marker=marker,
+        ms=ms,
+        markevery=markevery,
+        alpha=a,
         label=label,
+        markerfacecolor=mfc,
+        markeredgecolor=mec,
+        markeredgewidth=mew,
+        zorder=st.get("zorder", None),
     )
-    _apply_dash(line, st["ls"])
+    _apply_dash(line, ls)
     return line
+
+
+def _compare_figspec(job: Optional[Dict], kind: str) -> Tuple[Tuple[float, float], int]:
+    """Pobiera figsize/dpi dla compare z job['fig'].
+
+    kind: "overlay" | "mean"
+    """
+    j = job or {}
+    fig_cfg = j.get("fig", {}) or {}
+    dpi = int(fig_cfg.get("dpi", DEFAULT_DPI))
+    block = fig_cfg.get(kind, {}) or {}
+    fs = block.get("figsize", None)
+    if fs is None:
+        # sensowne defaulty dla compare (większe niż standardowe)
+        fs = (12.0, 4.6) if kind == "overlay" else (12.0, 4.6)
+    try:
+        figsize = (float(fs[0]), float(fs[1]))
+    except Exception:
+        figsize = (12.0, 4.6)
+    return figsize, dpi
 
 def _metric_specs_overlay(metrics: List[str], include_pressure: bool) -> List[Tuple[str, str, str]]:
     specs: List[Tuple[str, str, str]] = []
@@ -410,12 +456,16 @@ def plot_compare_overlay(
     metric_key: str,             # "h"|"f"|"dp_band"
     fluid_name: str,
     series_profiles: List[Dict], # [{label,x_mm,y,shade_lo,shade_hi}, ...]
-    job_name: str = "",
+    job: Optional[Dict] = None,
 ) -> None:
     ensure_dir(out_dir)
 
     ylabels = {"h": "h [W/m²K]", "f": "f_Fanning [-]", "dp_band": "Δp (band) [Pa]"}
-    fig, ax = plt.subplots()
+
+    figsize, dpi = _compare_figspec(job, "overlay")
+    fig, ax = plt.subplots(figsize=figsize)
+
+    resolver = StyleResolver.from_job(job)
 
     xmax = 0.0
     y_all: List[np.ndarray] = []
@@ -425,7 +475,7 @@ def plot_compare_overlay(
         y = np.asarray(sp["y"], dtype=float)
         lbl = str(sp["label"])
 
-        st = _style_for_label(lbl, len(x))
+        st = resolver.style_for(lbl, len(x))
         _plot_line(ax, x, y, st, alpha=0.95, label=lbl)
 
         xmax = max(xmax, float(np.nanmax(x)))
@@ -438,7 +488,7 @@ def plot_compare_overlay(
         if lo is not None and hi is not None:
             lo = np.asarray(lo, dtype=float)
             hi = np.asarray(hi, dtype=float)
-            ax.fill_between(x, lo, hi, color=st["color"], alpha=0.15)
+            ax.fill_between(x, lo, hi, color=st.get("color"), alpha=0.15)
 
     ax.set_xlim(0.0, xmax)
     ax.set_xlabel(("Water" if fluid_name == "Fluid2" else "Air") + ": from In to Out [mm]")
@@ -452,12 +502,13 @@ def plot_compare_overlay(
         lo, hi = _pad_limits(y_min, y_max, OVERLAY_Y_PAD_FACTOR)
         ax.set_ylim(lo, hi)
 
+    job_name = (job or {}).get("name", "")
     fname = f"cmp_overlay_{metric_key}_{'F2' if fluid_name=='Fluid2' else 'F1'}"
     if job_name:
         fname += f"__{_sanitize(job_name)}"
     fname += ".png"
 
-    fig.savefig(out_dir / fname, dpi=DEFAULT_DPI, bbox_inches="tight")
+    fig.savefig(out_dir / fname, dpi=dpi, bbox_inches="tight")
     plt.close(fig)
     print(f"[OK] Compare-Overlay → {fname}")
 
@@ -469,27 +520,46 @@ def plot_compare_mean(
     metric_key: str,             # "h" | "f" | "dp_sum"
     fluid_name: str,
     series_list: List[Dict],     # [{label,t_global,t_aligned,y_raw,y_ma{W:arr}}, ...]
-    job_name: str = "",
+    job: Optional[Dict] = None,
     time_mode: str = "global",   # "global" | "aligned"
     show_raw: bool = True,
     ref_lines: Optional[List[tuple[str, float]]] = None,  # e.g. [("M006", val), ...]
 ) -> None:
     ensure_dir(out_dir)
 
-    fig, ax = plt.subplots()
+    figsize, dpi = _compare_figspec(job, "mean")
+    fig, ax = plt.subplots(figsize=figsize)
+
+    resolver = StyleResolver.from_job(job)
+    plot_cfg = (job or {}).get("plot", {}) or {}
+    raw_alpha = float(plot_cfg.get("raw_alpha", 0.45))
+    ma_alpha  = float(plot_cfg.get("ma_alpha", 0.95))
+    raw_lw_scale = float(plot_cfg.get("raw_lw_scale", 0.8))
+    ma_lw_scale  = float(plot_cfg.get("ma_lw_scale", 1.0))
+    ref_ls    = str(plot_cfg.get("ref_ls", ":"))
+    ref_alpha = float(plot_cfg.get("ref_alpha", 0.9))
 
     # collect y for scaling (only what is actually drawn)
     y_all: List[np.ndarray] = []
+
+    t_min_all = np.inf
+    t_max_all = -np.inf
 
     for s in series_list:
         label = str(s["label"])
         t = np.asarray(s["t_global"] if time_mode == "global" else s["t_aligned"], dtype=float)
 
+        if t.size:
+            t_min_all = min(t_min_all, float(np.nanmin(t)))
+            t_max_all = max(t_max_all, float(np.nanmax(t)))
+
         # raw
         if show_raw and s.get("y_raw") is not None:
             y = np.asarray(s["y_raw"], dtype=float)
-            st = _style_for_label(label, len(t))
-            _plot_line(ax, t, y, st, alpha=0.45, label=f"{label} (raw)")
+            st = resolver.style_for(label, len(t))
+            st = dict(st)
+            st["lw"] = float(st.get("lw", LW)) * raw_lw_scale
+            _plot_line(ax, t, y, st, alpha=raw_alpha, label=f"{label} (raw)")
             m = np.isfinite(y)
             if m.any():
                 y_all.append(y[m])
@@ -498,27 +568,27 @@ def plot_compare_mean(
         y_ma = s.get("y_ma") or {}
         for W, yW in y_ma.items():
             yW = np.asarray(yW, dtype=float)
-            st = _style_for_label(label, len(t))
-            _plot_line(ax, t, yW, st, alpha=0.95, label=f"{label} (MA{W})")
+            st = resolver.style_for(label, len(t))
+            st = dict(st)
+            st["lw"] = float(st.get("lw", LW)) * ma_lw_scale
+            _plot_line(ax, t, yW, st, alpha=ma_alpha, label=f"{label} (MA{W})")
             m = np.isfinite(yW)
             if m.any():
                 y_all.append(yW[m])
 
     # steady reference lines (styled as their own "labels")
     if ref_lines:
+        if not np.isfinite(t_min_all) or not np.isfinite(t_max_all) or t_min_all >= t_max_all:
+            t_min_all, t_max_all = 0.0, 1.0
         for lbl, yref in ref_lines:
             lbl_ss = f"{lbl} SS" if not str(lbl).endswith("SS") else str(lbl)
-            st = _style_for_label(lbl_ss, 200)
-
-            hline = ax.axhline(
-                float(yref),
-                lw=max(0.7, 0.9 * LW),
-                ls=":",
-                color=st["color"],
-                alpha=0.9,
-                label=lbl_ss,
-            )
-            _apply_dash(hline, ":")
+            st = resolver.style_for(lbl_ss, 200)
+            st = dict(st)
+            st["ls"] = ref_ls
+            st["marker"] = None
+            _plot_line(ax, np.asarray([t_min_all, t_max_all]),
+                      np.asarray([float(yref), float(yref)]),
+                      st, alpha=ref_alpha, label=lbl_ss)
 
         y_all.append(np.asarray([y for _, y in ref_lines], dtype=float))
 
@@ -536,11 +606,12 @@ def plot_compare_mean(
             lo, hi = _pad_limits(y_min, y_max, MEAN_Y_PAD_FACTOR)
             ax.set_ylim(lo, hi)
 
+    job_name = (job or {}).get("name", "")
     fname = f"cmp_mean_{metric_key}_{'F2' if fluid_name=='Fluid2' else 'F1'}__{time_mode}"
     if job_name:
         fname += f"__{_sanitize(job_name)}"
     fname += ".png"
 
-    fig.savefig(out_dir / fname, dpi=DEFAULT_DPI, bbox_inches="tight")
+    fig.savefig(out_dir / fname, dpi=dpi, bbox_inches="tight")
     plt.close(fig)
     print(f"[OK] Compare-Mean → {fname}")
