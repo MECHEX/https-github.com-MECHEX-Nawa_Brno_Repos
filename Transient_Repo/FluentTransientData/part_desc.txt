@@ -1,0 +1,9 @@
+part1,air,water
+part2,air,water
+part3,air,water
+part4,air,water
+part5,air,oil,laminar 0-6.58, dt5e-4
+part6,air,oil,laminar 6.58-20.0, dt5e-4
+part7,air,oil,k-w-earsm_air-transf_oil_ft0-10s_dt5e-4
+part8,air,oil,k-w-earsm_air-transf_oil_ft9.91-19.91s_dt5e-4
+part9,air,oil,k-w-earsm_air-transf_oil_ft9.91-19.91s_dt5e-4_lower-reslim
