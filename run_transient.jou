@@ -1,0 +1,295 @@
+/file/set-tui-version "25.1"
+
+; =============================================================
+; run_transient_guni10_007.jou
+; Purpose:
+;   1) read the steady-initialized case/data,
+;   2) recreate report surfaces for Fluid1 and Fluid2,
+;   3) attach periodic SRP export,
+;   4) run a low-URF transient ramp,
+;   5) continue the main transient run,
+;   6) save checkpoints and final case/data.
+;
+; Notes:
+;   - All user-editable constants are grouped at the top.
+;   - Surface spacing is defined by START/STOP/COUNT, not by step size.
+;   - The legacy run counter is removed.
+;   - Export is intended every N time steps.
+; =============================================================
+
+; =============================================================
+; USER SETTINGS
+; =============================================================
+
+; -----------------------------
+; PATHS AND FILES
+; -----------------------------
+(define case_dir  "F:/mmarcinkowski/Gyroid_geom/Gyroid_uniform10/2_g_uni10_case_data")
+(define logs_dir  "F:/mmarcinkowski/Gyroid_geom/Gyroid_uniform10/4_g_uni10_fluent_logs")
+
+(define case_name "Mesh_guni10_007.cas.h5")
+(define data_name "Mesh_guni10_007.dat.h5")
+(define export_jou "F:/mmarcinkowski/Gyroid_geom/Gyroid_uniform10/4_g_uni10_fluent_logs/export_results_transient_guni10_007.jou")
+
+(define run_tag   "GUNI10_007")
+(define job_name  "Mesh_guni10_007")
+
+; -----------------------------
+; TRANSIENT CONTROL
+; -----------------------------
+(define dt 2.5e-4)
+(define inner_iterations 30)
+(define steps_low_urfs 400)
+(define steps_regular 39600)
+(define export_every 40)
+(define autosave_every 1000)
+
+; -----------------------------
+; OUTPUT FILES (case/data)
+; -----------------------------
+(define autosave_root (string-append case_dir "/" job_name "_AUTOSAVE"))
+(define low_urf_case (string-append case_dir "/" job_name "_LOW_URF.cas.h5"))
+(define low_urf_data (string-append case_dir "/" job_name "_LOW_URF.dat.h5"))
+(define final_case   (string-append case_dir "/" job_name "_FINAL.cas.h5"))
+(define final_data   (string-append case_dir "/" job_name "_FINAL.dat.h5"))
+
+; -----------------------------
+; FLUID 1 SURFACE DEFINITION
+; extracted from Surfaces_Fluid1.jou
+; -----------------------------
+(define fluid1_cell_zone "(fff-9-fluid_1)")
+(define fluid1_wall_zone "fluid_1_inter:18625")
+(define fluid1_env_zone  "(fff-9-geom)")
+(define fluid1_iso_axis  'z)
+(define fluid1_iso_start -0.02959)
+(define fluid1_iso_stop   0.0292)
+(define fluid1_band_count 30) ; => 31 iso planes
+
+; -----------------------------
+; FLUID 2 SURFACE DEFINITION
+; extracted from Surfaces_Fluid2.jou
+; -----------------------------
+(define fluid2_cell_zone "(fff-9-fluid_2)")
+(define fluid2_wall_zone "geom_fluid2_inter:16414-shadow")
+(define fluid2_env_zone  "(fff-9-geom)")
+(define fluid2_iso_axis  'y)
+(define fluid2_iso_start  0.0095)
+(define fluid2_iso_stop  -0.00953)
+(define fluid2_band_count 20) ; => 21 iso planes
+
+; -----------------------------
+; LOW URFs
+; -----------------------------
+(define urf_p_low      0.15)
+(define urf_mom_low    0.35)
+(define urf_T_low      0.5)
+(define urf_k_low      0.4)
+(define urf_omega_low  0.4)
+(define urf_mut_low    0.5)
+(define urf_rho_low    0.5)
+(define urf_bf_low     0.5)
+
+; -----------------------------
+; REGULAR URFs
+; -----------------------------
+(define urf_p_reg      0.3)
+(define urf_mom_reg    0.7)
+(define urf_T_reg      1.0)
+(define urf_k_reg      0.8)
+(define urf_omega_reg  0.8)
+(define urf_mut_reg    1.0)
+(define urf_rho_reg    1.0)
+(define urf_bf_reg     1.0)
+
+; =============================================================
+; INTERNAL HELPERS
+; =============================================================
+(define (absf x) (if (< x 0.0) (- x) x))
+
+(define (frange-asc start stop count)
+  (let ((step (/ (- stop start) count)))
+    (let loop ((i 0) (acc '()))
+      (if (> i count)
+          (reverse acc)
+          (loop (+ i 1) (cons (+ start (* i step)) acc))))))
+
+(define (frange-desc start stop count)
+  (let ((step (/ (absf (- stop start)) count)))
+    (let loop ((i 0) (acc '()))
+      (if (> i count)
+          (reverse acc)
+          (loop (+ i 1) (cons (- start (* i step)) acc))))))
+
+(define (pairs lst)
+  (if (or (null? lst) (null? (cdr lst)))
+      '()
+      (cons (list (car lst) (cadr lst)) (pairs (cdr lst)))))
+
+(define (join lst)
+  (if (null? lst)
+      ""
+      (let loop ((ls (cdr lst)) (acc (car lst)))
+        (if (null? ls)
+            acc
+            (loop (cdr ls) (string-append acc " " (car ls)))))))
+
+(define (mk-iso-face-z zone z name)
+  (ti-menu-load-string
+    (format #f "/surface/iso-surface z-coordinate ~a () ~a ~g ()\n" name zone z)))
+
+(define (mk-iso-face-y zone y name)
+  (ti-menu-load-string
+    (format #f "/surface/iso-surface y-coordinate ~a () ~a ~g ()\n" name zone y)))
+
+(define (mk-band-z wall name z1 z2)
+  (let ((lo (min z1 z2)) (hi (max z1 z2)))
+    (ti-menu-load-string
+      (format #f "/surface/iso-clip z-coordinate ~a ~a ~g ~g\n" name wall lo hi))))
+
+(define (mk-band-y wall name y1 y2)
+  (let ((lo (min y1 y2)) (hi (max y1 y2)))
+    (ti-menu-load-string
+      (format #f "/surface/iso-clip y-coordinate ~a ~a ~g ~g\n" name wall lo hi))))
+
+; =============================================================
+; READ CASE/DATA
+; =============================================================
+(ti-menu-load-string (format #f "/file/read-case ~a/~a\n" case_dir case_name))
+(ti-menu-load-string (format #f "/file/read-data ~a/~a\n" case_dir data_name))
+
+; =============================================================
+; CREATE SURFACES: FLUID 1
+; =============================================================
+(define f1_vals (frange-asc fluid1_iso_start fluid1_iso_stop fluid1_band_count))
+(define f1_ziso_names '())
+(define f1_band_names '())
+(define f1_env_names  '())
+
+(let loop ((i 1) (vv f1_vals))
+  (if (pair? vv)
+      (begin
+        (let ((nm (format #f "f1_ziso_~a" i)))
+          (mk-iso-face-z fluid1_cell_zone (car vv) nm)
+          (set! f1_ziso_names (append f1_ziso_names (list nm))))
+        (loop (+ i 1) (cdr vv)))))
+
+(let loop ((i 1) (pp (pairs f1_vals)))
+  (if (pair? pp)
+      (begin
+        (let* ((p  (car pp))
+               (z1 (car p))
+               (z2 (cadr p))
+               (nm (format #f "f1_wall_band_~a" i)))
+          (mk-band-z fluid1_wall_zone nm z1 z2)
+          (set! f1_band_names (append f1_band_names (list nm))))
+        (loop (+ i 1) (cdr pp)))))
+
+(let loop ((i 1) (vv f1_vals))
+  (if (pair? vv)
+      (begin
+        (let ((nm (format #f "f1_env_~a" i)))
+          (mk-iso-face-z fluid1_env_zone (car vv) nm)
+          (set! f1_env_names (append f1_env_names (list nm))))
+        (loop (+ i 1) (cdr vv)))))
+
+(define ziso-line   (join f1_ziso_names))
+(define bands1-line (join f1_band_names))
+(define env1-line   (join f1_env_names))
+
+; =============================================================
+; CREATE SURFACES: FLUID 2
+; =============================================================
+(define f2_vals (frange-desc fluid2_iso_start fluid2_iso_stop fluid2_band_count))
+(define f2_yiso_names '())
+(define f2_band_names '())
+(define f2_env_names  '())
+
+(let loop ((i 1) (vv f2_vals))
+  (if (pair? vv)
+      (begin
+        (let ((nm (format #f "f2_yiso_~a" i)))
+          (mk-iso-face-y fluid2_cell_zone (car vv) nm)
+          (set! f2_yiso_names (append f2_yiso_names (list nm))))
+        (loop (+ i 1) (cdr vv)))))
+
+(let loop ((i 1) (pp (pairs f2_vals)))
+  (if (pair? pp)
+      (begin
+        (let* ((p  (car pp))
+               (y1 (car p))
+               (y2 (cadr p))
+               (nm (format #f "f2_wall_band_~a" i)))
+          (mk-band-y fluid2_wall_zone nm y1 y2)
+          (set! f2_band_names (append f2_band_names (list nm))))
+        (loop (+ i 1) (cdr pp)))))
+
+(let loop ((i 1) (vv f2_vals))
+  (if (pair? vv)
+      (begin
+        (let ((nm (format #f "f2_env_~a" i)))
+          (mk-iso-face-y fluid2_env_zone (car vv) nm)
+          (set! f2_env_names (append f2_env_names (list nm))))
+        (loop (+ i 1) (cdr vv)))))
+
+(define yiso-line   (join f2_yiso_names))
+(define bands2-line (join f2_band_names))
+(define env2-line   (join f2_env_names))
+
+; =============================================================
+; SOLVER SETUP
+; =============================================================
+/define/models/unsteady-1st-order? yes
+;/define/models/unsteady-2nd-order? yes
+(ti-menu-load-string (format #f "/solve/set/time-step ~g\n" dt))
+
+; auto-save
+(ti-menu-load-string (format #f "/file/auto-save/data-frequency ~a\n" autosave_every))
+/file/auto-save/case-frequency if-case-is-modified
+(ti-menu-load-string (format #f "/file/auto-save/root-name ~a\n" autosave_root))
+/file/auto-save/append-file-name-with flow-time 5
+
+; periodic export journal
+; Official Fluent docs confirm execute-commands can run commands at specified time steps.
+; The compact batch form below follows the commonly used TUI syntax:
+;   /solve/execute-commands/add-edit <name> yes no "time-step" N "<command>"
+(define export_cmd (format #f "/file/read-journal ~a" export_jou))
+(ti-menu-load-string
+  (format #f "/solve/execute-commands/add-edit export-data yes no \"time-step\" ~a \"~a\"\n"
+          export_every export_cmd))
+
+; =============================================================
+; LOW-URF TRANSIENT RAMP
+; =============================================================
+(ti-menu-load-string (format #f "/solve/set/under-relaxation pressure ~g\n" urf_p_low))
+(ti-menu-load-string (format #f "/solve/set/under-relaxation mom ~g\n" urf_mom_low))
+(ti-menu-load-string (format #f "/solve/set/under-relaxation temperature ~g\n" urf_T_low))
+(ti-menu-load-string (format #f "/solve/set/under-relaxation k ~g\n" urf_k_low))
+(ti-menu-load-string (format #f "/solve/set/under-relaxation omega ~g\n" urf_omega_low))
+(ti-menu-load-string (format #f "/solve/set/under-relaxation turb-viscosity ~g\n" urf_mut_low))
+(ti-menu-load-string (format #f "/solve/set/under-relaxation density ~g\n" urf_rho_low))
+(ti-menu-load-string (format #f "/solve/set/under-relaxation body-force ~g\n" urf_bf_low))
+
+(ti-menu-load-string (format #f "/solve/dual-time-iterate ~a ~a\n" steps_low_urfs inner_iterations))
+(ti-menu-load-string (format #f "/file/write-case ~a\n" low_urf_case))
+(ti-menu-load-string (format #f "/file/write-data ~a\n" low_urf_data))
+
+; =============================================================
+; MAIN TRANSIENT RUN
+; =============================================================
+(ti-menu-load-string (format #f "/solve/set/under-relaxation pressure ~g\n" urf_p_reg))
+(ti-menu-load-string (format #f "/solve/set/under-relaxation mom ~g\n" urf_mom_reg))
+(ti-menu-load-string (format #f "/solve/set/under-relaxation temperature ~g\n" urf_T_reg))
+(ti-menu-load-string (format #f "/solve/set/under-relaxation k ~g\n" urf_k_reg))
+(ti-menu-load-string (format #f "/solve/set/under-relaxation omega ~g\n" urf_omega_reg))
+(ti-menu-load-string (format #f "/solve/set/under-relaxation turb-viscosity ~g\n" urf_mut_reg))
+(ti-menu-load-string (format #f "/solve/set/under-relaxation density ~g\n" urf_rho_reg))
+(ti-menu-load-string (format #f "/solve/set/under-relaxation body-force ~g\n" urf_bf_reg))
+
+(ti-menu-load-string (format #f "/solve/dual-time-iterate ~a ~a\n" steps_regular inner_iterations))
+
+; final write-out
+(ti-menu-load-string (format #f "/file/write-case ~a\n" final_case))
+(ti-menu-load-string (format #f "/file/write-data ~a\n" final_data))
+
+; optional clean exit
+/exit yes

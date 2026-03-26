@@ -22,6 +22,21 @@ def pick_axis_col(df: pd.DataFrame) -> Optional[str]:
     if COL_Y_M in df.columns: return COL_Y_M
     return None
 
+def _series_context(series_cfg: Dict) -> str:
+    label = str(series_cfg.get("label", "<no-label>"))
+    case_id = str(series_cfg.get("case_id", "<no-case>"))
+    fluid = str(series_cfg.get("fluid", "<no-fluid>"))
+    parts = ", ".join(str(p) for p in series_cfg.get("parts", [])) or "<no-parts>"
+    t0_s = series_cfg.get("t0_s", "<no-t0>")
+    t1_s = series_cfg.get("t1_s", "<no-t1>")
+    return (
+        f"label='{label}', case_id='{case_id}', fluid='{fluid}', "
+        f"parts=[{parts}], window=[{t0_s}, {t1_s}] s"
+    )
+
+def _windows_overlap(a0: float, a1: float, b0: float, b1: float) -> bool:
+    return not (a1 < b0 - 1e-12 or a0 > b1 + 1e-12)
+
 def filter_by_global_window(
     items: List[Tuple[float, str, Path]],
     t_start_part: float,
@@ -67,6 +82,7 @@ def build_overlay_profile_for_series(
     parts  = series_cfg["parts"]
     t0_s   = float(series_cfg["t0_s"])
     t1_s   = float(series_cfg["t1_s"])
+    ctx = _series_context(series_cfg)
 
     overlay_opts = series_cfg.get("_overlay_opts_", {})
     mode    = (overlay_opts.get("time_avg", {}) or {}).get("mode", "mean")     # "mean"|"median"
@@ -75,15 +91,29 @@ def build_overlay_profile_for_series(
 
     items_all: List[Tuple[float, Path, str]] = []
     for part in parts:
-        if part not in index or fluid not in index[part]:
-            continue
+        if part not in PARTS:
+            raise KeyError(f"Unknown internal part key '{part}' in compare series ({ctx}).")
+
         t_start = float(PARTS[part]["t_start_s"])
+        t_end = float(PARTS[part]["t_end_s"])
+        if not _windows_overlap(t0_s, t1_s, t_start, t_end):
+            continue
+
+        if part not in index:
+            raise RuntimeError(
+                f"No indexed SRP data for part '{part}' in compare series ({ctx})."
+            )
+        if fluid not in index[part]:
+            raise RuntimeError(
+                f"No indexed data for fluid '{fluid}' in part '{part}' for compare series ({ctx})."
+            )
+
         items = filter_by_global_window(index[part][fluid], t_start, t0_s, t1_s)
         for (t_local, part_name, path) in items:
             items_all.append((t_start + t_local, path, part_name))
 
     if not items_all:
-        return None
+        raise RuntimeError(f"No snapshots found in the selected time window for compare series ({ctx}).")
 
     items_all.sort(key=lambda r: r[0])
     times = np.array([r[0] for r in items_all], dtype=float)
@@ -107,8 +137,16 @@ def build_overlay_profile_for_series(
             band_tab = cache_bands[key]
 
         axis_col = pick_axis_col(band_tab)
-        if axis_col is None or metric_col not in band_tab.columns:
-            continue
+        if axis_col is None:
+            raise RuntimeError(
+                f"Transient compare overlay is missing an axis column in file '{path.name}' "
+                f"for compare series ({ctx})."
+            )
+        if metric_col not in band_tab.columns:
+            raise RuntimeError(
+                f"Transient compare overlay is missing metric column '{metric_col}' in file '{path.name}' "
+                f"for compare series ({ctx})."
+            )
 
         x_raw = band_tab[axis_col].astype(float).values
         y     = band_tab[metric_col].astype(float).values
@@ -122,13 +160,15 @@ def build_overlay_profile_for_series(
             axis_name = axis_col
         else:
             if len(x_mm) != len(X_mm_ref):
-                n = min(len(x_mm), len(X_mm_ref))
-                x_mm = x_mm[:n]; y = y[:n]; X_mm_ref = X_mm_ref[:n]
+                raise RuntimeError(
+                    f"Transient compare overlay found inconsistent profile lengths for compare series ({ctx}). "
+                    f"Reference length={len(X_mm_ref)}, file '{path.name}' length={len(x_mm)}."
+                )
 
         Ys.append(y)
 
     if X_mm_ref is None or not Ys:
-        return None
+        raise RuntimeError(f"Compare series produced no valid overlay profiles ({ctx}).")
 
     Y = np.vstack(Ys)  # [n_snap, n_pts]
     if mode == "median":
@@ -176,12 +216,27 @@ def build_mean_timeseries_for_series(
     parts  = series_cfg["parts"]
     t0_s   = float(series_cfg["t0_s"])
     t1_s   = float(series_cfg["t1_s"])
+    ctx = _series_context(series_cfg)
 
     rows: List[Dict] = []
     for part in parts:
-        if part not in index or fluid not in index[part]:
-            continue
+        if part not in PARTS:
+            raise KeyError(f"Unknown internal part key '{part}' in compare series ({ctx}).")
+
         t_start = float(PARTS[part]["t_start_s"])
+        t_end = float(PARTS[part]["t_end_s"])
+        if not _windows_overlap(t0_s, t1_s, t_start, t_end):
+            continue
+
+        if part not in index:
+            raise RuntimeError(
+                f"No indexed SRP data for part '{part}' in compare series ({ctx})."
+            )
+        if fluid not in index[part]:
+            raise RuntimeError(
+                f"No indexed data for fluid '{fluid}' in part '{part}' for compare series ({ctx})."
+            )
+
         items = filter_by_global_window(index[part][fluid], t_start, t0_s, t1_s)
         for (t_local, part_name, path) in items:
             key = (part_name, fluid, path)
@@ -198,5 +253,5 @@ def build_mean_timeseries_for_series(
             rows.append(row)
 
     if not rows:
-        return pd.DataFrame(columns=["Label", "Fluid", "Time[s]"] + list(MEAN_COL_MAP.values()))
+        raise RuntimeError(f"No mean timeseries samples found for compare series ({ctx}).")
     return pd.DataFrame(rows).sort_values(["Label", "Fluid", "Time[s]"]).reset_index(drop=True)

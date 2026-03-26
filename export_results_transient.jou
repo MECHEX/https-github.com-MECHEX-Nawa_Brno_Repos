@@ -1,0 +1,66 @@
+/file/set-tui-version "25.1"
+
+; =============================================================
+; export_results_transient_guni10_007.jou
+; Writes SRP reports for both fluids at the current flow time.
+;
+; Required globals defined by the main run journal:
+;   run_tag, logs_dir,
+;   ziso-line, bands1-line, env1-line,
+;   yiso-line, bands2-line, env2-line
+; =============================================================
+
+(define fl_time (string-append "_T" (number->string (rpgetvar 'flow-time))))
+
+(define out-srp1 (string-append logs_dir "/Sim_Data_Fluid1_" run_tag fl_time ".srp"))
+(define out-srp2 (string-append logs_dir "/Sim_Data_Fluid2_" run_tag fl_time ".srp"))
+
+(define temp-var  "temperature")
+(define pstat-var "pressure")
+(define mu-var    "viscosity-lam")
+(define k-var     "thermal-conductivity-lam")
+(define qflux-var "heat-flux")
+
+(define (nonempty? s) (and (string? s) (> (string-length s) 0)))
+
+(define (srp out-srp op surfaces var)
+  (if (nonempty? surfaces)
+      (ti-menu-load-string
+        (if var
+            (format #f "/report/surface-integrals ~a ~a () ~a yes ~a\n"
+                    op surfaces var out-srp)
+            (format #f "/report/surface-integrals ~a ~a () yes ~a\n"
+                    op surfaces out-srp)))
+      #f))
+
+; -----------------------------
+; FLUID 1
+; -----------------------------
+(srp out-srp1 "mass-weighted-avg"  ziso-line   temp-var)
+(srp out-srp1 "area-weighted-avg"  ziso-line   pstat-var)
+(srp out-srp1 "area"               ziso-line   #f)
+(srp out-srp1 "mass-flow-rate"     ziso-line   #f)
+(srp out-srp1 "area-weighted-avg"  ziso-line   "density")
+(srp out-srp1 "area-weighted-avg"  ziso-line   mu-var)
+(srp out-srp1 "area-weighted-avg"  ziso-line   k-var)
+(srp out-srp1 "area"               env1-line   #f)
+(srp out-srp1 "area"               bands1-line #f)
+(srp out-srp1 "integral"           bands1-line qflux-var)
+(srp out-srp1 "area-weighted-avg"  bands1-line temp-var)
+(format #t "[Export] Fluid1 -> ~a\n" out-srp1)
+
+; -----------------------------
+; FLUID 2
+; -----------------------------
+(srp out-srp2 "mass-weighted-avg"  yiso-line   temp-var)
+(srp out-srp2 "area-weighted-avg"  yiso-line   pstat-var)
+(srp out-srp2 "area"               yiso-line   #f)
+(srp out-srp2 "mass-flow-rate"     yiso-line   #f)
+(srp out-srp2 "area-weighted-avg"  yiso-line   "density")
+(srp out-srp2 "area-weighted-avg"  yiso-line   mu-var)
+(srp out-srp2 "area-weighted-avg"  yiso-line   k-var)
+(srp out-srp2 "area"               env2-line   #f)
+(srp out-srp2 "area"               bands2-line #f)
+(srp out-srp2 "integral"           bands2-line qflux-var)
+(srp out-srp2 "area-weighted-avg"  bands2-line temp-var)
+(format #t "[Export] Fluid2 -> ~a\n" out-srp2)

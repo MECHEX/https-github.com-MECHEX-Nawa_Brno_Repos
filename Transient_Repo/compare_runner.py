@@ -136,16 +136,22 @@ def run_compare_jobs(
                     profiles: List[Dict] = []
 
                     for s in sers:
-                        prf = build_overlay_profile_for_series(
-                            series_cfg=s,
-                            PARTS=PARTS,
-                            index=index,
-                            cache_bands=cache_bands,
-                            build_one=build_one,
-                            metric_key=metric_key,
-                        )
-                        if prf is not None:
-                            profiles.append(prf)
+                        try:
+                            prf = build_overlay_profile_for_series(
+                                series_cfg=s,
+                                PARTS=PARTS,
+                                index=index,
+                                cache_bands=cache_bands,
+                                build_one=build_one,
+                                metric_key=metric_key,
+                            )
+                        except Exception as exc:
+                            raise RuntimeError(
+                                f"COMPARE_JOBS '{job_name}' overlay failed for metric '{metric_key}', "
+                                f"fluid '{fluid}', series '{s.get('label')}', "
+                                f"case_id '{s.get('case_id')}'."
+                            ) from exc
+                        profiles.append(prf)
 
                     if steady_enabled and steady_use_ovl:
                         for case in (steady_cases.get(fluid, []) or []):
@@ -201,16 +207,21 @@ def run_compare_jobs(
                     t_last_valid: List[float] = []
 
                     for s in sers:
-                        dfm = build_mean_timeseries_for_series(
-                            series_cfg=s,
-                            PARTS=PARTS,
-                            index=index,
-                            cache_means=cache_means,
-                            cache_bands=cache_bands,
-                            build_one=build_one,
-                        )
-                        if dfm.empty:
-                            continue
+                        try:
+                            dfm = build_mean_timeseries_for_series(
+                                series_cfg=s,
+                                PARTS=PARTS,
+                                index=index,
+                                cache_means=cache_means,
+                                cache_bands=cache_bands,
+                                build_one=build_one,
+                            )
+                        except Exception as exc:
+                            raise RuntimeError(
+                                f"COMPARE_JOBS '{job_name}' mean plot failed for metric '{metric_key}', "
+                                f"fluid '{fluid}', series '{s.get('label')}', "
+                                f"case_id '{s.get('case_id')}'."
+                            ) from exc
 
                         gdf = dfm[dfm["Fluid"] == fluid].sort_values("Time[s]").copy()
                         if base_col not in gdf.columns or gdf.empty:

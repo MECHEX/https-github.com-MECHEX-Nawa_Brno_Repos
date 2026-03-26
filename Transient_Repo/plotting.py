@@ -323,7 +323,7 @@ def make_overlays_per_fluid(
         fname = f"{prefix}__{outfile_tag}.png" if outfile_tag else f"{prefix}.png"
         fig.savefig(out_dir / fname, dpi=DEFAULT_DPI, bbox_inches="tight")
         plt.close(fig)
-        print(f"[OK] Overlay → {fname}")
+        print(f"[OK] Overlay -> {fname}")
 
 # =========================
 # STANDARD: Overlay per fluid (MEAN ± STD)
@@ -394,7 +394,7 @@ def make_overlay_mean_std_per_fluid(
         fname = f"{prefix}_meanstd__{outfile_tag}.png" if outfile_tag else f"{prefix}_meanstd.png"
         fig.savefig(out_dir / fname, dpi=DEFAULT_DPI, bbox_inches="tight")
         plt.close(fig)
-        print(f"[OK] Overlay(mean±std) → {fname}")
+        print(f"[OK] Overlay(mean+/-std) -> {fname}")
 
 # =========================
 # STANDARD: Mean vs time per fluid
@@ -446,7 +446,7 @@ def plot_means_vs_time(
         fname = f"{prefix}__{outfile_tag}.png" if outfile_tag else f"{prefix}.png"
         fig.savefig(out_dir / fname, dpi=DEFAULT_DPI, bbox_inches="tight")
         plt.close(fig)
-        print(f"[OK] Mean → {fname}")
+        print(f"[OK] Mean -> {fname}")
 
 # =========================
 # COMPARE: Overlay (multiple series)
@@ -510,7 +510,7 @@ def plot_compare_overlay(
 
     fig.savefig(out_dir / fname, dpi=dpi, bbox_inches="tight")
     plt.close(fig)
-    print(f"[OK] Compare-Overlay → {fname}")
+    print(f"[OK] Compare-Overlay -> {fname}")
 
 # =========================
 # COMPARE: Mean (multiple series)
@@ -614,4 +614,4 @@ def plot_compare_mean(
 
     fig.savefig(out_dir / fname, dpi=dpi, bbox_inches="tight")
     plt.close(fig)
-    print(f"[OK] Compare-Mean → {fname}")
+    print(f"[OK] Compare-Mean -> {fname}")
