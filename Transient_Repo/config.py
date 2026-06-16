@@ -29,7 +29,7 @@ SRP_DEFAULTS = {
 # - optional "active": False disables the whole case.
 CASES: Dict[str, Dict] = {
     "grad_aw_laminar": {
-        "active": False,
+        "active": True,
         "geometry": "grad",
         "run": "aw_laminar",
         "description": "GRAD geometry, air/water, transient, laminar",
@@ -55,7 +55,7 @@ CASES: Dict[str, Dict] = {
         },
     },
     "grad_aw_kw_earsm": {
-        "active": False,
+        "active": True,
         "geometry": "grad",
         "run": "aw_kw_earsm",
         "description": "GRAD geometry, air/water, transient, k-w EARSM",
@@ -68,8 +68,23 @@ CASES: Dict[str, Dict] = {
             },
         },
     },
+    "grad_aw_laminar_part10": {
+        "active": True,
+        "geometry": "grad",
+        "run": "aw_laminar_part10",
+        "description": "GRAD geometry, air/water, transient, laminar, part10 export",
+        "parts": {
+            "part10": {
+                "source_dir": "part10",
+                "t_start_s": 0.0,
+                "t_end_s": 0.68,
+                "dt_sim_s": 0.0005,
+                "t_interpretation": "local",
+            },
+        },
+    },
     "grad_ao_laminar": {
-        "active": False,
+        "active": True,
         "geometry": "grad",
         "run": "ao_laminar",
         "description": "GRAD geometry, air/oil, transient, laminar",
@@ -89,7 +104,7 @@ CASES: Dict[str, Dict] = {
         },
     },
     "grad_ao_kw_earsm": {
-        "active": False,
+        "active": True,
         "geometry": "grad",
         "run": "ao_kw_earsm",
         "description": "GRAD geometry, air/oil, transient, k-w EARSM, 0-10 s",
@@ -103,7 +118,7 @@ CASES: Dict[str, Dict] = {
         },
     },
     "grad_ao_kw_earsm_restart": {
-        "active": False,
+        "active": True,
         "geometry": "grad",
         "run": "ao_kw_earsm_restart",
         "description": "GRAD geometry, air/oil, transient, k-w EARSM, 9.91-19.91 s",
@@ -117,7 +132,7 @@ CASES: Dict[str, Dict] = {
         },
     },
     "grad_ao_kw_earsm_restart_lowres": {
-        "active": False,
+        "active": True,
         "geometry": "grad",
         "run": "ao_kw_earsm_restart_lowres",
         "description": "GRAD geometry, air/oil, transient, k-w EARSM, lower res limit",
@@ -158,6 +173,36 @@ CASES: Dict[str, Dict] = {
             },
         },
     },
+    "uni10_005_hfe": {
+        "active": True,
+        "geometry": "uni10",
+        "run": "005_hfe",
+        "description": "UNI10 geometry, run 005 HFE, air/HFE, transient, 0.0035-19.9835 s",
+        "parts": {
+            "main": {
+                "source_dir": "uni10_005_hfe",
+                "t_start_s": 0.0,
+                "t_end_s": 19.9835,
+                "dt_sim_s": 0.0005,
+                "t_interpretation": "local",
+            },
+        },
+    },
+    "uni10_005_oil": {
+        "active": True,
+        "geometry": "uni10",
+        "run": "005_oil",
+        "description": "UNI10 geometry, run 005 oil, air/oil, transient, 0.012-19.992 s",
+        "parts": {
+            "main": {
+                "source_dir": "uni10_005_oil",
+                "t_start_s": 0.0,
+                "t_end_s": 19.992,
+                "dt_sim_s": 0.0005,
+                "t_interpretation": "local",
+            },
+        },
+    },
     "uni10_007": {
         "active": True,
         "geometry": "uni10",
@@ -194,6 +239,7 @@ GRAD_PART_CASE_MAP = {
     "part7": "grad_ao_kw_earsm",
     "part8": "grad_ao_kw_earsm_restart",
     "part9": "grad_ao_kw_earsm_restart_lowres",
+    "part10": "grad_aw_laminar_part10",
 }
 
 GRAD_COMPARE_WINDOWS_S = {
@@ -206,11 +252,14 @@ GRAD_COMPARE_WINDOWS_S = {
     "part7": (8.0, 9.0),
     "part8": (18.0, 19.0),
     "part9": (18.0, 19.0),
+    "part10": (0.50, 0.68),
 }
 
 UNI_COMPARE_WINDOWS_S = {
     "uni10_003": (18.0, 19.0),
     "uni10_005": (18.0, 19.0),
+    "uni10_005_hfe": (18.9835, 19.9835),
+    "uni10_005_oil": (18.992, 19.992),
     "uni10_007": (18.0, 19.0),
 }
 
@@ -229,6 +278,43 @@ PLOT_JOBS: List[Dict] = [
         "overlay_mode": "mean_std",
     }
     for part_id, case_id in GRAD_PART_CASE_MAP.items()
+] + [
+    {
+        "name": "job_uni10_003",
+        "active": True,
+        "members": [{"case_id": "uni10_003"}],
+        "fluids": ["Fluid1", "Fluid2"],
+        "plots": ["overlay", "mean"],
+        "metrics": ["h", "f"],
+        "overlay_mode": "mean_std",
+    },
+    {
+        "name": "job_uni10_005",
+        "active": True,
+        "members": [{"case_id": "uni10_005"}],
+        "fluids": ["Fluid1", "Fluid2"],
+        "plots": ["overlay", "mean"],
+        "metrics": ["h", "f"],
+        "overlay_mode": "mean_std",
+    },
+    {
+        "name": "job_uni10_007",
+        "active": True,
+        "members": [{"case_id": "uni10_007"}],
+        "fluids": ["Fluid1", "Fluid2"],
+        "plots": ["overlay", "mean"],
+        "metrics": ["h", "f"],
+        "overlay_mode": "mean_std",
+    },
+    {
+        "name": "job_grad_part10",
+        "active": True,
+        "members": [{"case_id": "grad_aw_laminar_part10", "parts": ["part10"]}],
+        "fluids": ["Fluid1", "Fluid2"],
+        "plots": ["overlay", "mean"],
+        "metrics": ["h", "f"],
+        "overlay_mode": "mean_std",
+    },
 ]
 
 
@@ -277,6 +363,7 @@ COMPARE_JOBS = [
             "Part7": {"color": "#e377c2", "ls": "-.", "marker": "X"},
             "Part8": {"color": "#7f7f7f", "ls": ":", "marker": "*"},
             "Part9": {"color": "#bcbd22", "ls": "--", "marker": "h"},
+            "Part10": {"color": "#4c78a8", "ls": "-", "marker": "8"},
             "M006 SS": {"color": "#000000", "ls": ":", "lw": 2.2, "marker": None},
             "M007 SS": {"color": "#444444", "ls": ":", "lw": 2.2, "marker": None},
         },
@@ -314,7 +401,7 @@ COMPARE_JOBS = [
     },
     {
         "name": "compare_grad_uni10_001",
-        "active": False,
+        "active": True,
         "plots": ["overlay", "mean"],
         "metrics": ["h", "f"],
         "overlay": {
@@ -356,8 +443,11 @@ COMPARE_JOBS = [
             "Part7": {"color": "#e377c2", "ls": "-.", "marker": "X"},
             "Part8": {"color": "#7f7f7f", "ls": ":", "marker": "*"},
             "Part9": {"color": "#bcbd22", "ls": "--", "marker": "h"},
+            "Part10": {"color": "#4c78a8", "ls": "-", "marker": "8"},
             "UNI10 003": {"color": "#17becf", "ls": "-", "marker": "o"},
             "UNI10 005": {"color": "#4d4d4d", "ls": "--", "marker": "s"},
+            "UNI10 005 HFE": {"color": "#2ca02c", "ls": "-", "marker": "P"},
+            "UNI10 005 Oil": {"color": "#9467bd", "ls": "-.", "marker": "X"},
             "UNI10 007": {"color": "#8a8a00", "ls": "-.", "marker": "^"},
             "M006 SS": {"color": "#000000", "ls": ":", "lw": 2.2, "marker": None},
             "M007 SS": {"color": "#444444", "ls": ":", "lw": 2.2, "marker": None},
@@ -405,11 +495,27 @@ COMPARE_JOBS = [
                 for case_id in ("uni10_003", "uni10_005", "uni10_007")
                 for fluid in ("Fluid1", "Fluid2")
             ]
+            +
+            [
+                {
+                    "label": label,
+                    "case_id": case_id,
+                    "parts": ["main"],
+                    "fluid": fluid,
+                    "t0_s": UNI_COMPARE_WINDOWS_S[case_id][0],
+                    "t1_s": UNI_COMPARE_WINDOWS_S[case_id][1],
+                }
+                for case_id, label in (
+                    ("uni10_005_hfe", "UNI10 005 HFE"),
+                    ("uni10_005_oil", "UNI10 005 Oil"),
+                )
+                for fluid in ("Fluid1", "Fluid2")
+            ]
         ),
     },
     {
         "name": "compare_uni10_with_steady",
-        "active": True,
+        "active": False,
         "plots": ["overlay", "mean"],
         "metrics": ["h", "f"],
         "overlay": {
@@ -470,6 +576,135 @@ COMPARE_JOBS = [
         },
         "series": (
             [
+                {
+                    "label": f"UNI10 {case_id.removeprefix('uni10_')}",
+                    "case_id": case_id,
+                    "parts": ["main"],
+                    "fluid": fluid,
+                    "t0_s": UNI_COMPARE_WINDOWS_S[case_id][0],
+                    "t1_s": UNI_COMPARE_WINDOWS_S[case_id][1],
+                }
+                for case_id in ("uni10_003", "uni10_005", "uni10_007")
+                for fluid in ("Fluid1", "Fluid2")
+            ]
+        ),
+    },
+    {
+        # ----------------------------------------------------------------
+        # GRAD (Air/Water only: part1-4) vs UNI10 (003/005/007) comparison.
+        # Compares the two gyroid geometry variants — graded cells vs uniform
+        # 10 mm cells — for the same fluid pair (air/water).
+        #
+        # Transient series use the representative time windows from
+        # GRAD_COMPARE_WINDOWS_S / UNI_COMPARE_WINDOWS_S.
+        # Steady references: M006/M007 (GRAD) and GUNI_003/005/007 (UNI10).
+        #
+        # To run:  set "active": True, then python main.py
+        # Output:  TransientFigs/Compare/compare_grad_vs_uni10/
+        # ----------------------------------------------------------------
+        "name": "compare_grad_vs_uni10",
+        "active": False,
+        "plots": ["overlay", "mean"],
+        "metrics": ["h", "f"],
+        "overlay": {
+            "time_avg": {"mode": "mean", "weights": "auto"},
+            "shade": "std",
+        },
+        "mean": {
+            "time_mode": "aligned",
+            "ma_windows": [2],
+            "ma_center": False,
+            "ma_edges": "strict",
+            "show_raw": False,
+        },
+        "fig": {
+            "dpi": 450,
+            "overlay": {"figsize": (14.0, 5.2)},
+            "mean": {"figsize": (14.0, 5.2)},
+        },
+        "plot": {
+            "base_lw": 1.0,
+            "base_ms": 5.0,
+            "raw_alpha": 0.35,
+            "ma_alpha": 0.6,
+            "raw_lw_scale": 0.85,
+            "ma_lw_scale": 1.00,
+            "ref_ls": ":",
+            "ref_alpha": 0.90,
+            "marker_mode": "random",
+            "marker_target": 16,
+            "marker_seed": 42,
+        },
+        "style_map": {
+            # GRAD air/water — laminar parts (blue family)
+            "Part1": {"color": "#1f77b4", "ls": "-",  "marker": "o"},
+            "Part2": {"color": "#4a9fd4", "ls": "--", "marker": "s"},
+            "Part3": {"color": "#7bbfea", "ls": "-.", "marker": "^"},
+            # GRAD air/water — k-ω EARSM (red/orange)
+            "Part4": {"color": "#d62728", "ls": ":",  "marker": "D"},
+            # UNI10 air/water — laminar (green/teal family)
+            "UNI10 003": {"color": "#2ca02c", "ls": "-",  "marker": "o"},
+            "UNI10 005": {"color": "#17becf", "ls": "--", "marker": "s"},
+            "UNI10 007": {"color": "#098765", "ls": "-.", "marker": "^"},
+            # Steady-state references — GRAD (dark dashed)
+            "M006 SS":      {"color": "#000000", "ls": ":", "lw": 2.0, "marker": None},
+            "M007 SS":      {"color": "#555555", "ls": ":", "lw": 2.0, "marker": None},
+            # Steady-state references — UNI10 (coloured dashed, matching transient)
+            "GUNI 003 SS":  {"color": "#2ca02c", "ls": ":", "lw": 2.0, "marker": None},
+            "GUNI 005 SS":  {"color": "#17becf", "ls": ":", "lw": 2.0, "marker": None},
+            "GUNI 007 SS":  {"color": "#098765", "ls": ":", "lw": 2.0, "marker": None},
+        },
+        "steady": {
+            "enabled": True,
+            "base_csv_dir": r"..\Steady_Repo\DataProcessed\csv",
+            "use_in_overlay": True,
+            "use_in_mean": True,
+            "cases": {
+                "Fluid1": [
+                    {"label": "M006 SS",     "file": "Sim_Data_Fluid1_M006.csv"},
+                    {"label": "M007 SS",     "file": "Sim_Data_Fluid1_M007.csv"},
+                    {"label": "GUNI 003 SS", "file": "Sim_Data_Fluid1_GUNI_003.csv"},
+                    {"label": "GUNI 005 SS", "file": "Sim_Data_Fluid1_GUNI_005.csv"},
+                    {"label": "GUNI 007 SS", "file": "Sim_Data_Fluid1_GUNI_007.csv"},
+                ],
+                "Fluid2": [
+                    {"label": "M006 SS",     "file": "Sim_Data_Fluid2_M006.csv"},
+                    {"label": "M007 SS",     "file": "Sim_Data_Fluid2_M007.csv"},
+                    {"label": "GUNI 003 SS", "file": "Sim_Data_Fluid2_GUNI_003.csv"},
+                    {"label": "GUNI 005 SS", "file": "Sim_Data_Fluid2_GUNI_005.csv"},
+                    {"label": "GUNI 007 SS", "file": "Sim_Data_Fluid2_GUNI_007.csv"},
+                ],
+            },
+            "mean_weights": {"h": "A_wet[m2]", "f": None},
+        },
+        "series": (
+            # --- GRAD Air/Water Laminar: parts 1-3 (each in its representative window) ---
+            [
+                {
+                    "label": f"Part{part_id.removeprefix('part')}",
+                    "case_id": GRAD_PART_CASE_MAP[part_id],
+                    "parts": [part_id],
+                    "fluid": fluid,
+                    "t0_s": GRAD_COMPARE_WINDOWS_S[part_id][0],
+                    "t1_s": GRAD_COMPARE_WINDOWS_S[part_id][1],
+                }
+                for part_id in ("part1", "part2", "part3")
+                for fluid in ("Fluid1", "Fluid2")
+            ]
+            # --- GRAD Air/Water k-ω EARSM: part4 ---
+            + [
+                {
+                    "label": "Part4",
+                    "case_id": GRAD_PART_CASE_MAP["part4"],
+                    "parts": ["part4"],
+                    "fluid": fluid,
+                    "t0_s": GRAD_COMPARE_WINDOWS_S["part4"][0],
+                    "t1_s": GRAD_COMPARE_WINDOWS_S["part4"][1],
+                }
+                for fluid in ("Fluid1", "Fluid2")
+            ]
+            # --- UNI10 Air/Water Laminar: runs 003, 005, 007 ---
+            + [
                 {
                     "label": f"UNI10 {case_id.removeprefix('uni10_')}",
                     "case_id": case_id,

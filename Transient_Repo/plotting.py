@@ -226,6 +226,25 @@ def _compare_figspec(job: Optional[Dict], kind: str) -> Tuple[Tuple[float, float
         figsize = (12.0, 4.6)
     return figsize, dpi
 
+
+def _place_legend_below(fig, ax, *, max_cols: int = 5) -> None:
+    handles, labels = ax.get_legend_handles_labels()
+    if not handles:
+        return
+    n_items = len(labels)
+    ncol = max(1, min(max_cols, int(np.ceil(n_items / 4))))
+    bottom = 0.28 if n_items <= 16 else 0.36
+    fig.subplots_adjust(bottom=bottom)
+    ax.legend(
+        handles,
+        labels,
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.18),
+        ncol=ncol,
+        frameon=False,
+        fontsize=8,
+    )
+
 def _metric_specs_overlay(metrics: List[str], include_pressure: bool) -> List[Tuple[str, str, str]]:
     specs: List[Tuple[str, str, str]] = []
     if "h" in metrics:
@@ -494,7 +513,7 @@ def plot_compare_overlay(
     ax.set_xlabel(("Water" if fluid_name == "Fluid2" else "Air") + ": from In to Out [mm]")
     ax.set_ylabel(ylabels[metric_key])
     ax.grid(True, alpha=0.3)
-    ax.legend(loc="best", frameon=False)
+    _place_legend_below(fig, ax)
 
     if y_all:
         y_concat = np.concatenate(y_all) if len(y_all) > 1 else y_all[0]
@@ -596,7 +615,7 @@ def plot_compare_mean(
     ylabels = {"h": "h [W/m²K]", "f": "f_Fanning [-]", "dp_sum": "Δp_sum [Pa]"}
     ax.set_ylabel(ylabels[metric_key])
     ax.grid(True, alpha=0.3)
-    ax.legend(loc="best", frameon=False)
+    _place_legend_below(fig, ax)
 
     # Y scaling (only from collected y)
     if y_all:

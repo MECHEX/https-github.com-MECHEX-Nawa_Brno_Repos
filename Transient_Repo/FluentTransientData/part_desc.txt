@@ -1,14 +1,43 @@
-M006 SS, air, water, steady, laminar
-M007 SS, air, water, steady, k-w-earsm
-part1,air,water, transient, laminar
-part2,air,water, transient, laminar
-part3,air,water, transient, laminar
-part4,air,water, transient, k-w-earsm
-part5,air,oil, transient, laminar 0-6.58, dt5e-4
-part6,air,oil, transient, laminar 6.58-20.0, dt5e-4
-part7,air,oil, transient, k-w-earsm_air-transf_oil_ft0-10s_dt5e-4
-part8,air,oil, transient, k-w-earsm_air-transf_oil_ft9.91-19.91s_dt5e-4
-part9,air,oil, transient, k-w-earsm_air-transf_oil_ft9.91-19.91s_dt5e-4_lower-reslim
-uni10_003,air,water,transient,laminar,mesh_003,0-20s
-uni10_005,air,water,transient,laminar,mesh_005,0-21.28s
-uni10_007,air,water,transient,laminar,mesh_007,0-20.14s
+# Transient / steady dataset registry
+#
+# Purpose:
+# - Keep a human-readable map between FluentTransientData folders, logical cases,
+#   mesh identifiers, fluids, and plotting jobs.
+# - Update this file whenever a new transient folder is added, especially for new
+#   fluid pairs or new mesh variants.
+#
+# Columns:
+# id | source_dir | case_id | geometry | mesh_id | cells | fluids | run_type | turbulence |
+# time_range_s | dt_sim_s | config_job | used_in_plots | notes
+
+id | source_dir | case_id | geometry | mesh_id | cells | fluids | run_type | turbulence | time_range_s | dt_sim_s | config_job | used_in_plots | notes
+M006_SS | FluentRaport | steady_reference | GRAD | M006 | 881118 | air/water | steady | laminar | n/a | n/a | n/a | steady refs | steady air/water laminar reference
+M007_SS | FluentRaport | steady_reference | GRAD | M007 | 881118 | air/water | steady | k-w EARSM | n/a | n/a | n/a | steady refs | steady air/water k-w EARSM reference
+
+part1 | part1 | grad_aw_laminar | GRAD | M006-like | 881118 | air/water | transient | laminar | 0.0-5.0 | 5e-4 | job_grad_part1 | optional compare | first AW laminar segment
+part2 | part2 | grad_aw_laminar | GRAD | M006-like | 881118 | air/water | transient | laminar | 5.0-10.0 | 5e-4 | job_grad_part2 | optional compare | second AW laminar segment
+part3 | part3 | grad_aw_laminar | GRAD | M006-like | 881118 | air/water | transient | laminar | 10.0-11.0 | 1e-4 | job_grad_part3 | G6/G7 AW Lam star | final AW laminar segment used as legacy transient point
+part4 | part4 | grad_aw_kw_earsm | GRAD | M007-like | 881118 | air/water | transient | k-w EARSM | 0.0-10.0 | 2.5e-4 | job_grad_part4 | G6/G7 AW k-w star | AW k-w EARSM transient point
+
+part5 | part5 | grad_ao_laminar | GRAD | TBD_GRAD | TBD | air/oil | transient | laminar | 0.0-6.58 | 5e-4 | job_grad_part5 | optional compare | first AO laminar segment
+part6 | part6 | grad_ao_laminar | GRAD | TBD_GRAD | TBD | air/oil | transient | laminar | 6.58-20.0 | 5e-4 | job_grad_part6 | optional compare | second AO laminar segment
+part7 | part7 | grad_ao_kw_earsm | GRAD | TBD_GRAD | TBD | air/oil | transient | k-w EARSM | 0.0-10.0 | 5e-4 | job_grad_part7 | optional compare | air transient / oil full transient, 0-10 s
+part8 | part8 | grad_ao_kw_earsm_restart | GRAD | TBD_GRAD | TBD | air/oil | transient | k-w EARSM | 9.91-19.91 | 5e-4 | job_grad_part8 | optional compare | restart, 9.91-19.91 s
+part9 | part9 | grad_ao_kw_earsm_restart_lowres | GRAD | TBD_GRAD | TBD | air/oil | transient | k-w EARSM | 9.91-19.91 | 5e-4 | job_grad_part9 | optional compare | restart with lower residual limit
+
+part10 | part10 | grad_aw_laminar_part10 | GRAD | Mesh_003_v4 | 7895738 | air/water | transient | laminar | 0.0-0.68 | 5e-4 | job_grad_part10 | G6/G7 AW Lam p10 star | linked to Steady_Repo/GGraded_results_test3.csv row Mesh_003_v4; last Fluid2 T0.70 file lacks wall-band data, so h/f processing uses 0.0-0.68 s
+
+uni10_003 | uni10_003 | uni10_003 | UNI10 | GUNI_003 / mesh_003 | 1341285 | air/water | transient | laminar | 0.0-20.0 | 5e-4 | job_uni10_003 | G6/G7 UNI star | UNI10 run 003
+uni10_005 | uni10_005 | uni10_005 | UNI10 | GUNI_005 / mesh_005 | 2594627 | air/water | transient | laminar | 0.0-21.28 | 5e-4 | job_uni10_005 | G6/G7 UNI star | UNI10 run 005
+uni10_005_hfe | uni10_005_hfe | uni10_005_hfe | UNI10 | GUNI10_007_HFE7K1? / folder uni10_005_hfe | TBD | air/HFE | transient | laminar | 0.0035-19.9835 | 5e-4 | compare_grad_uni10_001 | compare_grad_uni10_001 | 1000 Fluid1 + 1000 Fluid2 SRP files; filenames use GUNI10_007_HFE7K1 and T tokens every 0.02 s; verify whether mesh is GUNI_007 or folder-level uni10_005 before adding to mesh-convergence plots
+uni10_005_oil | uni10_005_oil | uni10_005_oil | UNI10 | GUNI10_007_TO? / folder uni10_005_oil | TBD | air/oil | transient | laminar | 0.012-19.992 | 5e-4 | compare_grad_uni10_001 | compare_grad_uni10_001 | 1000 Fluid1 + 1000 Fluid2 SRP files; filenames use GUNI10_007_TO and T tokens every 0.02 s; verify mesh identity before adding to mesh-convergence plots
+uni10_007 | uni10_007 | uni10_007 | UNI10 | GUNI_007 / mesh_007 | 6253892 | air/water | transient | laminar | 0.0-20.14 | 5e-4 | job_uni10_007 | G6/G7 UNI star | UNI10 run 007
+
+GUNI10_001 | GUNI10_001 | TBD | UNI10 | GUNI10_001 | TBD | TBD | transient | TBD | TBD | TBD | TBD | not configured | legacy/unmapped folder; add config entry before use
+
+# Quick update checklist for future folders:
+# 1. Add a row here with source_dir, case_id, mesh_id, cells, fluids, turbulence, time range, and dt.
+# 2. Add/extend CASES in Transient_Repo/config.py.
+# 3. Add/update PLOT_JOBS or COMPARE_JOBS in Transient_Repo/config.py.
+# 4. If the dataset should appear in G6/G7, add it to TRANSIENT_STARS in Steady_Repo/mesh_convergence_plots.py.
+# 5. If the mesh cell count should be read from a steady CSV, make sure the mesh_id exists there.

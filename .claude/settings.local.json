@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs wc:*)",
+      "Bash(python -c \"import config; print\\(''COMPARE_JOBS count:'', len\\(config.COMPARE_JOBS\\)\\); [print\\('' -'', j[''name''], ''| active:'', j[''active'']\\) for j in config.COMPARE_JOBS]\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\(''convergence.py''\\).read\\(\\)\\); print\\(''convergence.py: OK''\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\(''mesh_convergence.py''\\).read\\(\\)\\); print\\(''Syntax OK''\\)\")",
+      "Bash(python mesh_convergence.py)",
+      "Bash(python -c \":*)",
+      "WebSearch",
+      "WebFetch(domain:www.sciencedirect.com)",
+      "WebFetch(domain:www.mdpi.com)",
+      "WebFetch(domain:www.nature.com)",
+      "WebFetch(domain:cea.hal.science)",
+      "WebFetch(domain:papers.ssrn.com)",
+      "WebFetch(domain:hal.science)",
+      "WebFetch(domain:arxiv.org)",
+      "Bash(python literature_comparison.py)",
+      "Bash(python article_figures.py)",
+      "Bash(python mesh_convergence_plots.py)",
+      "Bash(find 'c:/Users/kik/My Drive/Politechnika Krakowska/Researches/2025_NAWA_Brno/Nawa_Brno_Repos/Steady_Repo' -iname *M003_v2* -o -iname *M004_v2*)",
+      "Bash(python -:*)",
+      "Bash(python _energy_correction.py)",
+      "Bash(python local_distribution_plots.py)",
+      "Bash(python -c \"import local_distribution_plots as m; m.fig_L\\(\\)\")",
+      "Bash(python -c \"import local_distribution_plots as m; m.fig_J\\(\\)\")",
+      "Bash(python -c \"import article_figures as m; m.fig_B_performance_factor\\(\\)\")",
+      "Bash(python -c \"import article_figures as m; m.fig_B2_hdp\\(\\)\")",
+      "Bash(python export_bands.py)"
+    ]
+  }
+}

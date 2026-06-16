@@ -1,0 +1,91 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage{amsmath,amssymb}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage[hidelinks]{hyperref}
+\usepackage[capitalise,noabbrev]{cleveref}
+
+\geometry{margin=2.5cm}
+\graphicspath{{figures/}}
+
+\sisetup{
+  detect-all,
+  separate-uncertainty=true,
+  per-mode=symbol
+}
+
+\title{Article Title}
+\author{
+  First Author\thanks{Corresponding author: email@example.com}
+  \and Second Author
+}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Write a concise summary of the motivation, methods, main results, and conclusions.
+\end{abstract}
+
+\noindent\textbf{Keywords:} keyword one; keyword two; keyword three
+
+\section{Introduction}
+\label{sec:introduction}
+
+Introduce the research problem, explain its importance, and summarize the main contribution of the article.
+
+\section{Materials and Methods}
+\label{sec:methods}
+
+Describe the geometry, numerical or experimental setup, boundary conditions, materials, mesh, solver settings, and validation strategy.
+
+\section{Results}
+\label{sec:results}
+
+Present the key findings. Refer to figures and tables using \verb|\Cref{}|, for example \Cref{fig:example}.
+
+\begin{figure}[htbp]
+  \centering
+  \fbox{\rule{0pt}{4cm}\rule{0.8\linewidth}{0pt}}
+  \caption{Example figure placeholder. Replace it with an imported image from the \texttt{figures} directory.}
+  \label{fig:example}
+\end{figure}
+
+\section{Discussion}
+\label{sec:discussion}
+
+Interpret the results, compare them with the literature, and describe limitations of the study.
+
+\section{Conclusions}
+\label{sec:conclusions}
+
+Summarize the main conclusions and indicate possible future work.
+
+\section*{Acknowledgements}
+
+Add funding information, project acknowledgements, and technical support notes here.
+
+\section*{Data Availability}
+
+State where the data, code, or simulation cases supporting the article can be found.
+
+\section*{Conflict of Interest}
+
+The authors declare no conflict of interest.
+
+\bibliographystyle{unsrt}
+\bibliography{references}
+
+\end{document}

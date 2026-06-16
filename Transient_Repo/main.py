@@ -311,6 +311,12 @@ def main() -> None:
         default=default_out_dir,
         help="Output directory for CSV, plots, and Compare results.",
     )
+    parser.add_argument(
+        "--jobs",
+        nargs="+",
+        default=None,
+        help="Optional active PLOT_JOB/COMPARE_JOB names to run.",
+    )
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
 
@@ -326,6 +332,20 @@ def main() -> None:
         compare_jobs=COMPARE_JOBS,
         srp_defaults=SRP_DEFAULTS,
     )
+    if args.jobs:
+        selected_jobs = set(args.jobs)
+        selected_plot_jobs = [job for job in runtime_cfg.plot_jobs if job["name"] in selected_jobs]
+        selected_compare_jobs = [job for job in runtime_cfg.compare_jobs if job["name"] in selected_jobs]
+        matched_jobs = {job["name"] for job in selected_plot_jobs + selected_compare_jobs}
+        missing_jobs = sorted(selected_jobs - matched_jobs)
+        if missing_jobs:
+            raise PlotJobError(f"Unknown or inactive job(s) requested with --jobs: {', '.join(missing_jobs)}")
+        runtime_cfg = RuntimeConfig(
+            part_catalog=runtime_cfg.part_catalog,
+            case_parts=runtime_cfg.case_parts,
+            plot_jobs=selected_plot_jobs,
+            compare_jobs=selected_compare_jobs,
+        )
 
     _assert_writable_dir(out_dir)
     _assert_writable_dir(csv_dir)
