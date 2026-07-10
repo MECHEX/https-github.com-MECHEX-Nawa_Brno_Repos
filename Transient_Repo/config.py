@@ -83,6 +83,21 @@ CASES: Dict[str, Dict] = {
             },
         },
     },
+    "grad_aw_laminar_part11": {
+        "active": True,
+        "geometry": "grad",
+        "run": "aw_laminar_part11",
+        "description": "GRAD geometry, air/water, transient, laminar, M003_v4 mesh settings, part11 export",
+        "parts": {
+            "part11": {
+                "source_dir": "part11",
+                "t_start_s": 0.02,
+                "t_end_s": 20.0,
+                "dt_sim_s": 0.0005,
+                "t_interpretation": "local",
+            },
+        },
+    },
     "grad_ao_laminar": {
         "active": True,
         "geometry": "grad",
@@ -240,6 +255,7 @@ GRAD_PART_CASE_MAP = {
     "part8": "grad_ao_kw_earsm_restart",
     "part9": "grad_ao_kw_earsm_restart_lowres",
     "part10": "grad_aw_laminar_part10",
+    "part11": "grad_aw_laminar_part11",
 }
 
 GRAD_COMPARE_WINDOWS_S = {
@@ -253,6 +269,7 @@ GRAD_COMPARE_WINDOWS_S = {
     "part8": (18.0, 19.0),
     "part9": (18.0, 19.0),
     "part10": (0.50, 0.68),
+    "part11": (18.0, 19.0),
 }
 
 UNI_COMPARE_WINDOWS_S = {
@@ -310,6 +327,15 @@ PLOT_JOBS: List[Dict] = [
         "name": "job_grad_part10",
         "active": True,
         "members": [{"case_id": "grad_aw_laminar_part10", "parts": ["part10"]}],
+        "fluids": ["Fluid1", "Fluid2"],
+        "plots": ["overlay", "mean"],
+        "metrics": ["h", "f"],
+        "overlay_mode": "mean_std",
+    },
+    {
+        "name": "job_grad_part11",
+        "active": True,
+        "members": [{"case_id": "grad_aw_laminar_part11", "parts": ["part11"]}],
         "fluids": ["Fluid1", "Fluid2"],
         "plots": ["overlay", "mean"],
         "metrics": ["h", "f"],
@@ -603,7 +629,7 @@ COMPARE_JOBS = [
         # Output:  TransientFigs/Compare/compare_grad_vs_uni10/
         # ----------------------------------------------------------------
         "name": "compare_grad_vs_uni10",
-        "active": False,
+        "active": True,
         "plots": ["overlay", "mean"],
         "metrics": ["h", "f"],
         "overlay": {
@@ -659,20 +685,23 @@ COMPARE_JOBS = [
             "base_csv_dir": r"..\Steady_Repo\DataProcessed\csv",
             "use_in_overlay": True,
             "use_in_mean": True,
+            # NOTE: steady labels here must NOT carry a trailing " SS" — the compare
+            # runner appends " SS" itself (compare_runner.py). The style_map keys below
+            # ("M006 SS", "GUNI 003 SS", ...) match those runner-generated labels.
             "cases": {
                 "Fluid1": [
-                    {"label": "M006 SS",     "file": "Sim_Data_Fluid1_M006.csv"},
-                    {"label": "M007 SS",     "file": "Sim_Data_Fluid1_M007.csv"},
-                    {"label": "GUNI 003 SS", "file": "Sim_Data_Fluid1_GUNI_003.csv"},
-                    {"label": "GUNI 005 SS", "file": "Sim_Data_Fluid1_GUNI_005.csv"},
-                    {"label": "GUNI 007 SS", "file": "Sim_Data_Fluid1_GUNI_007.csv"},
+                    {"label": "M006",     "file": "Sim_Data_Fluid1_M006.csv"},
+                    {"label": "M007",     "file": "Sim_Data_Fluid1_M007.csv"},
+                    {"label": "GUNI 003", "file": "Sim_Data_Fluid1_GUNI_003.csv"},
+                    {"label": "GUNI 005", "file": "Sim_Data_Fluid1_GUNI_005.csv"},
+                    {"label": "GUNI 007", "file": "Sim_Data_Fluid1_GUNI_007.csv"},
                 ],
                 "Fluid2": [
-                    {"label": "M006 SS",     "file": "Sim_Data_Fluid2_M006.csv"},
-                    {"label": "M007 SS",     "file": "Sim_Data_Fluid2_M007.csv"},
-                    {"label": "GUNI 003 SS", "file": "Sim_Data_Fluid2_GUNI_003.csv"},
-                    {"label": "GUNI 005 SS", "file": "Sim_Data_Fluid2_GUNI_005.csv"},
-                    {"label": "GUNI 007 SS", "file": "Sim_Data_Fluid2_GUNI_007.csv"},
+                    {"label": "M006",     "file": "Sim_Data_Fluid2_M006.csv"},
+                    {"label": "M007",     "file": "Sim_Data_Fluid2_M007.csv"},
+                    {"label": "GUNI 003", "file": "Sim_Data_Fluid2_GUNI_003.csv"},
+                    {"label": "GUNI 005", "file": "Sim_Data_Fluid2_GUNI_005.csv"},
+                    {"label": "GUNI 007", "file": "Sim_Data_Fluid2_GUNI_007.csv"},
                 ],
             },
             "mean_weights": {"h": "A_wet[m2]", "f": None},
@@ -714,6 +743,82 @@ COMPARE_JOBS = [
                     "t1_s": UNI_COMPARE_WINDOWS_S[case_id][1],
                 }
                 for case_id in ("uni10_003", "uni10_005", "uni10_007")
+                for fluid in ("Fluid1", "Fluid2")
+            ]
+        ),
+    },
+    {
+        # ----------------------------------------------------------------
+        # Cold-side fluid effect on the SAME geometry and run (UNI10 005).
+        # Isolates the influence of the cold-side working fluid on h and f:
+        #   - uni10_005      → Water  (Air/Water)
+        #   - uni10_005_oil  → Oil    (Air/Oil)
+        #   - uni10_005_hfe  → HFE    (Air/HFE dielectric)
+        # Geometry, mesh and run are identical (005), so differences on
+        # Fluid2 come purely from fluid properties (Pr, ρ, μ, k).
+        # Fluid1 (air) is included to show the wall-coupling feedback.
+        #
+        # Steady references are intentionally OFF: only water has a steady
+        # counterpart (GUNI_005); mixing a single steady line would be
+        # asymmetric. This job is a pure transient fluid-effect comparison.
+        #
+        # To run:  python main.py --jobs compare_uni10_005_coldfluid
+        # Output:  TransientFigs/Compare/compare_uni10_005_coldfluid/
+        # ----------------------------------------------------------------
+        "name": "compare_uni10_005_coldfluid",
+        "active": True,
+        "plots": ["overlay", "mean"],
+        "metrics": ["h", "f"],
+        "overlay": {
+            "time_avg": {"mode": "mean", "weights": "auto"},
+            "shade": "std",
+        },
+        "mean": {
+            "time_mode": "aligned",
+            "ma_windows": [2],
+            "ma_center": False,
+            "ma_edges": "strict",
+            "show_raw": False,
+        },
+        "fig": {
+            "dpi": 450,
+            "overlay": {"figsize": (14.0, 5.2)},
+            "mean": {"figsize": (14.0, 5.2)},
+        },
+        "plot": {
+            "base_lw": 1.0,
+            "base_ms": 5.0,
+            "raw_alpha": 0.35,
+            "ma_alpha": 0.6,
+            "raw_lw_scale": 0.85,
+            "ma_lw_scale": 1.00,
+            "ref_ls": ":",
+            "ref_alpha": 0.90,
+            "marker_mode": "random",
+            "marker_target": 16,
+            "marker_seed": 42,
+        },
+        "style_map": {
+            "UNI10 005 Water": {"color": "#1f77b4", "ls": "-",  "marker": "o"},
+            "UNI10 005 Oil":   {"color": "#9467bd", "ls": "--", "marker": "s"},
+            "UNI10 005 HFE":   {"color": "#2ca02c", "ls": "-.", "marker": "^"},
+        },
+        "steady": {"enabled": False},
+        "series": (
+            [
+                {
+                    "label": label,
+                    "case_id": case_id,
+                    "parts": ["main"],
+                    "fluid": fluid,
+                    "t0_s": UNI_COMPARE_WINDOWS_S[case_id][0],
+                    "t1_s": UNI_COMPARE_WINDOWS_S[case_id][1],
+                }
+                for case_id, label in (
+                    ("uni10_005",     "UNI10 005 Water"),
+                    ("uni10_005_oil", "UNI10 005 Oil"),
+                    ("uni10_005_hfe", "UNI10 005 HFE"),
+                )
                 for fluid in ("Fluid1", "Fluid2")
             ]
         ),

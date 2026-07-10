@@ -19,13 +19,17 @@ Fluid2) flow through separate, interleaved gyroid channels separated by the soli
 
 ### Fluid Pairs Simulated
 
-| Label | Fluid1 | Fluid2 |
-|-------|--------|--------|
-| Air/Water (AW) | Air (hot side) | Water (cold side) |
-| Air/Oil (AO) | Air (hot side) | Oil (cold side) |
+| Label | Fluid1 | Fluid2 | Where |
+|-------|--------|--------|-------|
+| Air/Water (AW) | Air (hot side) | Water (cold side) | Steady (GRAD + UNI10) and transient |
+| Air/Oil (AO) | Air (hot side) | Oil (cold side) | Transient only (GRAD `part5`–`part9`, UNI10 `uni10_005_oil`) |
+| Air/HFE | Air (hot side) | HFE dielectric fluid (cold side) | Transient only (UNI10 `uni10_005_hfe`) |
 
 Fluid1 is resolved along the **z-axis**; Fluid2 along the **y-axis** (see `FLUID_CFG` / `AXIS_RANGES`
 in each sub-repo's `constants.py` or `config.py`).
+
+**Note:** the steady-state study (`Steady_Repo`) covers **Air/Water only**. Oil and HFE cold-side
+fluids exist exclusively in the transient dataset (`Transient_Repo`).
 
 ### Turbulence Models
 
@@ -153,10 +157,12 @@ behaviour due to changing surface mesh quality between runs.
 |---------|---------|
 | `Fluid1` | First fluid (air side, z-axis) |
 | `Fluid2` | Second fluid (water/oil side, y-axis) |
-| `M001`–`M007` | GRAD geometry steady-state mesh IDs |
+| `M001`–`M008` | GRAD geometry steady-state mesh IDs (`M003_v4`/`M008` extend the clean laminar GRAD series) |
 | `GUNI_001/003/005/007/008` | UNI10 geometry steady-state mesh IDs |
-| `part1`–`part9` | GRAD transient simulation segments |
-| `uni10_003/005/007` | UNI10 transient simulation runs |
+| `part1`–`part11` | GRAD transient simulation segments (`part10` = short air/water laminar export, `part11` = long Mesh_003_v4 air/water laminar transient) |
+| `uni10_003/005/007` | UNI10 transient simulation runs (Air/Water) |
+| `uni10_005_oil` | UNI10 run 005 with oil cold side (Air/Oil) |
+| `uni10_005_hfe` | UNI10 run 005 with HFE cold side (Air/HFE) |
 | `_AW_` | Air/Water fluid pair |
 | `_AO_` | Air/Oil fluid pair |
 | `_Lam_` | Laminar turbulence model |

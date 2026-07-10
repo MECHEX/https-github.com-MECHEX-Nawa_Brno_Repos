@@ -40,19 +40,24 @@ convergence.py     ← standalone script: mean_h and mean_f vs. time per case
 
 ## Simulation Dataset (`CASES` in `config.py`)
 
-| Case ID | Geometry | Fluid Pair | Turbulence | Parts | Time Range |
-|---------|----------|-----------|-----------|-------|-----------|
-| `grad_aw_laminar` | GRAD | Air/Water | Laminar | part1, part2, part3 | 0–11 s |
-| `grad_aw_kw_earsm` | GRAD | Air/Water | k-ω EARSM | part4 | 0–10 s |
-| `grad_ao_laminar` | GRAD | Air/Oil | Laminar | part5, part6 | 0–20 s |
-| `grad_ao_kw_earsm` | GRAD | Air/Oil | k-ω EARSM | part7 | 0–10 s |
-| `grad_ao_kw_earsm_restart` | GRAD | Air/Oil | k-ω EARSM | part8 | 9.91–19.91 s |
-| `grad_ao_kw_earsm_restart_lowres` | GRAD | Air/Oil | k-ω EARSM | part9 | 9.91–19.91 s |
-| `uni10_003` ✓ | UNI10 | Air/Water | Laminar | main | 0–20 s |
-| `uni10_005` ✓ | UNI10 | Air/Water | Laminar | main | 0–21.28 s |
-| `uni10_007` ✓ | UNI10 | Air/Water | Laminar | main | 0–20.14 s |
+| Case ID | Geometry | Fluid Pair | Turbulence | Parts | Time Range | Notes |
+|---------|----------|-----------|-----------|-------|-----------|-------|
+| `grad_aw_laminar` | GRAD | Air/Water | Laminar | part1, part2, part3 | 0–11 s | |
+| `grad_aw_kw_earsm` | GRAD | Air/Water | k-ω EARSM | part4 | 0–10 s | |
+| `grad_aw_laminar_part10` | GRAD | Air/Water | Laminar | part10 | 0–0.68 s | short export, `t_interpretation="local"` |
+| `grad_aw_laminar_part11` | GRAD | Air/Water | Laminar | part11 | 0.02–20.0 s | long Mesh_003_v4 transient; reference for M003_v4 steady |
+| `grad_ao_laminar` | GRAD | Air/Oil | Laminar | part5, part6 | 0–20 s | |
+| `grad_ao_kw_earsm` | GRAD | Air/Oil | k-ω EARSM | part7 | 0–10 s | |
+| `grad_ao_kw_earsm_restart` | GRAD | Air/Oil | k-ω EARSM | part8 | 9.91–19.91 s | |
+| `grad_ao_kw_earsm_restart_lowres` | GRAD | Air/Oil | k-ω EARSM | part9 | 9.91–19.91 s | |
+| `uni10_003` | UNI10 | Air/Water | Laminar | main | 0–20 s | |
+| `uni10_005` | UNI10 | Air/Water | Laminar | main | 0–21.28 s | |
+| `uni10_005_hfe` | UNI10 | Air/HFE | Laminar | main | 0–19.98 s | HFE cold side, `t_interpretation="local"` |
+| `uni10_005_oil` | UNI10 | Air/Oil | Laminar | main | 0–19.99 s | oil cold side, `t_interpretation="local"` |
+| `uni10_007` | UNI10 | Air/Water | Laminar | main | 0–20.14 s | |
 
-✓ = `"active": True` — data is indexed when these cases appear in any active job.
+All cases above currently carry `"active": True` in `config.py`. Case-level `active` only controls
+auto-indexing when no active job references the case (see `"active"` note under `CASES` below).
 
 ---
 
@@ -168,6 +173,7 @@ GRAD_COMPARE_WINDOWS_S = {
     "part1": (3.0, 4.0),   "part2": (8.0, 9.0),   "part3": (10.0, 11.0),
     "part4": (4.0, 5.0),   "part5": (5.0, 6.0),   "part6": (15.0, 16.0),
     "part7": (8.0, 9.0),   "part8": (18.0, 19.0),  "part9": (18.0, 19.0),
+    "part11": (18.0, 19.0),
 }
 
 # UNI10 runs (last second of simulation — converged region)
@@ -184,13 +190,22 @@ See also `convergence.py` for a diagnostic plot of mean_h/mean_f vs. time to ver
 
 ## Active Jobs (Current State)
 
+State reflects `config.py` (verify there if in doubt — the config is the source of truth).
+
 | Job | Type | Active | Output |
 |-----|------|--------|--------|
+| `job_grad_part1..part9` | PLOT_JOB | ✗ | `plots/job_grad_part*/` |
+| `job_grad_part10` | PLOT_JOB | ✓ | `plots/job_grad_part10/` |
+| `job_grad_part11` | PLOT_JOB | ✓ | `plots/job_grad_part11/` |
 | `job_uni10_003/005/007` | PLOT_JOB | ✓ | `plots/job_uni10_*/` |
 | `compare_grad_P1_P9` | COMPARE_JOB | ✗ | `Compare/compare_grad_P1_P9/` |
-| `compare_grad_uni10_001` | COMPARE_JOB | ✗ | `Compare/compare_grad_uni10_001/` |
+| `compare_grad_uni10_001` | COMPARE_JOB | ✓ | `Compare/compare_grad_uni10_001/` |
 | `compare_uni10_with_steady` | COMPARE_JOB | ✗ | `Compare/compare_uni10_with_steady/` |
-| `compare_grad_vs_uni10` | COMPARE_JOB | ✗ | `Compare/compare_grad_vs_uni10/` |
+| `compare_grad_vs_uni10` | COMPARE_JOB | ✓ | `Compare/compare_grad_vs_uni10/` |
+| `compare_uni10_005_coldfluid` | COMPARE_JOB | ✓ | `Compare/compare_uni10_005_coldfluid/` |
+
+Note: some inactive jobs still have output on disk from earlier runs (e.g. `compare_grad_P1_P9`,
+`compare_uni10_with_steady`). Presence of an output directory does not imply the job is currently active.
 
 To activate a job: set `"active": True` in the corresponding entry in `config.py`.
 
@@ -209,6 +224,12 @@ python main.py --in-dir /path/to/FluentTransientData --out-dir /path/to/output -
 python convergence.py
 python convergence.py --cases uni10_003 uni10_005 --out-dir /path/to/output
 ```
+
+**Path note (reproducibility):** `config.py` defines `DEFAULT_BASE_DATA_DIR` / `DEFAULT_OUT_DIR`
+pointing at a `My Drive\...` location, whereas this working checkout lives under
+`Documents\PK and PR\Brno_NAWA\Repo\...`. The two are separate copies. Do **not** assume the
+defaults match your checkout — pass `--in-dir` / `--out-dir` explicitly, or confirm which location
+is canonical before relying on the hard-coded defaults. (Open question flagged for the repo owner.)
 
 ---
 

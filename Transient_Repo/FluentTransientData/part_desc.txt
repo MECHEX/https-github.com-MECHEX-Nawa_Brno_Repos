@@ -13,6 +13,8 @@
 id | source_dir | case_id | geometry | mesh_id | cells | fluids | run_type | turbulence | time_range_s | dt_sim_s | config_job | used_in_plots | notes
 M006_SS | FluentRaport | steady_reference | GRAD | M006 | 881118 | air/water | steady | laminar | n/a | n/a | n/a | steady refs | steady air/water laminar reference
 M007_SS | FluentRaport | steady_reference | GRAD | M007 | 881118 | air/water | steady | k-w EARSM | n/a | n/a | n/a | steady refs | steady air/water k-w EARSM reference
+M003_v4_SS | FluentRaport | steady_reference | GRAD | Mesh_003_v4 / M003_v4 | 7895738 | air/water | steady | laminar | n/a | n/a | n/a | G3 v2-v5 refs | steady air/water laminar reference paired with part11 transient
+M008_SS | FluentRaport | steady_reference | GRAD | M008 | 6018034 | air/water | steady | laminar | n/a | n/a | n/a | G3 v2-v5 refs | new steady air/water laminar point added to current convergence figures
 
 part1 | part1 | grad_aw_laminar | GRAD | M006-like | 881118 | air/water | transient | laminar | 0.0-5.0 | 5e-4 | job_grad_part1 | optional compare | first AW laminar segment
 part2 | part2 | grad_aw_laminar | GRAD | M006-like | 881118 | air/water | transient | laminar | 5.0-10.0 | 5e-4 | job_grad_part2 | optional compare | second AW laminar segment
@@ -26,6 +28,8 @@ part8 | part8 | grad_ao_kw_earsm_restart | GRAD | TBD_GRAD | TBD | air/oil | tra
 part9 | part9 | grad_ao_kw_earsm_restart_lowres | GRAD | TBD_GRAD | TBD | air/oil | transient | k-w EARSM | 9.91-19.91 | 5e-4 | job_grad_part9 | optional compare | restart with lower residual limit
 
 part10 | part10 | grad_aw_laminar_part10 | GRAD | Mesh_003_v4 | 7895738 | air/water | transient | laminar | 0.0-0.68 | 5e-4 | job_grad_part10 | G6/G7 AW Lam p10 star | linked to Steady_Repo/GGraded_results_test3.csv row Mesh_003_v4; last Fluid2 T0.70 file lacks wall-band data, so h/f processing uses 0.0-0.68 s
+
+part11 | part11 | grad_aw_laminar_part11 | GRAD | Mesh_003_v4 | 7895738 | air/water | transient | laminar | 0.02-20.0 | 5e-4 | job_grad_part11 | G3 v2 M003_v4 transient point | same mesh/settings family as M003_v4 steady; 1000 Fluid1 + 1000 Fluid2 SRP files; plotted as M003_v4 transient reference
 
 uni10_003 | uni10_003 | uni10_003 | UNI10 | GUNI_003 / mesh_003 | 1341285 | air/water | transient | laminar | 0.0-20.0 | 5e-4 | job_uni10_003 | G6/G7 UNI star | UNI10 run 003
 uni10_005 | uni10_005 | uni10_005 | UNI10 | GUNI_005 / mesh_005 | 2594627 | air/water | transient | laminar | 0.0-21.28 | 5e-4 | job_uni10_005 | G6/G7 UNI star | UNI10 run 005
