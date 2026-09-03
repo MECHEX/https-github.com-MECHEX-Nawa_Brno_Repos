@@ -437,3 +437,109 @@ Weryfikacja:
 - `python -m py_compile Steady_Repo\mesh_convergence_plots.py` - OK.
 - Regeneracja `fig_G3_combined_conv_v2/v3/v4/v5` z `mesh_convergence_plots.py` - OK.
 - `python Transient_Repo\main.py --in-dir Transient_Repo\FluentTransientData --out-dir Transient_Repo\TransientFigs --jobs job_grad_part11` - OK.
+
+---
+
+## 2026-07-24 10:19 +02:00 - G3 v6: tortuosity i czas przebywania
+
+Cel:
+- Przygotowac panel porownujacy rozklady tortuosity, czas przebywania, lokalne kwantyle
+  `tau50/IQR/tau90` oraz udzial trajektorii trapped dla GRAD i UNI10.
+
+Zmiany:
+- Dodano `Steady_Repo/tortuosity_v6.py`.
+- Dodano kontrakt danych i pusty szablon:
+  - `Steady_Repo/DataProcessed/tortuosity/README.md`,
+  - `Steady_Repo/DataProcessed/tortuosity/trajectories_TEMPLATE.csv`.
+- Dodano `fig_G3_combined_conv_v6()` do `mesh_convergence_plots.py`.
+- Rozszerzono `Steady_Repo/DataProcessed/plots/FIGURES_DESCRIPTION.md`.
+
+Decyzje:
+- Tortuosity jest liczone jako `L_path/L_straight >= 1`; odwrotnosc jest raportowana jako
+  straightness.
+- Rozklady sa liczone wylacznie z zakonczonych trajektorii, a `N_trapped/N_in` ze wszystkich
+  unikalnych czastek.
+- Brak trajektorii w aktualnym repo nie jest uzupelniany proxy z SRP. Generator tworzy
+  oznaczona figure `WAITING FOR DATA`, dopoki nie pojawi sie `trajectories.csv`.
+
+Weryfikacja:
+- `python -m py_compile tortuosity_v6.py mesh_convergence_plots.py` - OK.
+- Test kontrolny w pamieci: `N_in`, `N_completed`, `N_trapped`, `tau50` i `tau90` - OK.
+- Pelny test panelu na sztucznym zbiorze 4 grup po 60 trajektorii - OK; sprawdzono PNG.
+- Uruchomienie bez `trajectories.csv` - OK; wygenerowano jawny stan `WAITING FOR DATA`.
+
+Uwagi / nastepne kroki:
+- Wyeksportowac z Fluent pathlines/particle tracks dla obu domen i kierunkow przeplywu,
+  lacznie z identyfikatorem czastki, segmentem, dlugoscia drogi i czasem przebywania.
+
+---
+
+## 2026-09-02 +02:00 - Panele na spotkanie z partnerami (Results/Plot/Partners_panel)
+
+Cel:
+- Jeden zestaw figur po angielsku na spotkanie z partnerami: wersja pelna 2x3 i skrocona 2x2,
+  bez watku kretosci (tortuosity) - wylacznie dane pasmowe (Run 001) + transient (Run 002).
+
+Zmiany:
+- Nowy folder `Results/Plot/Partners_panel/` z `_data.py` (warstwa danych + fity + outliery)
+  i `make_partner_panels.py` (generator obu paneli).
+- Zrodla danych: gotowe CSV z `Run001_two_simu` (band_values, summary R000-R005)
+  oraz `Run002_transient_fluids` (transient_global_summary, pec, energy_balance).
+  Fizyka nie jest przeliczana ponownie.
+
+Panele:
+- (a) Nu(Re) log-log, obie strony, punkty globalne + fit + R2, w tle chmura pasmowa.
+- (b) dp(U) log-log z wykladnikami i linia odniesienia Darcy n=1.
+- (c) test rozprzezenia stron (odchylenie od sredniej klastra) + replikat R000/R005.
+- (d) znormalizowany profil h/h_sr vs x/L, 12 przebiegow + srednie kierunkowe.
+- (e) h_powietrza vs h_cieczy dla 3 cieczy x 2 geometrie, tabelka Q / P_pump.
+- (f) PEC (h,dp) i (Nu,f), GRAD/UNI10, + ramka walidacyjna.
+- 2x2 = (a), (d), (e), (f).
+
+Decyzje:
+- R2 pokazywane WYLACZNIE dla korelacji globalnych; jakosc dopasowania na poziomie pasm
+  celowo nie jest raportowana na figurach.
+- Outliery odseparowane jednym waskim kryterium: h < 10% mediany run/strona (kolaps LMTD).
+  Odrzucone: 1 pasmo (R003 / Water, band 20, h = 13.9 W/m2K, h/mediana = 0.009).
+  Prog jest o rzad wielkosci nizszy niz najslabsze fizyczne pasmo (0.39 mediany), wiec
+  realny spadek h na koncu rdzenia nie jest usuwany. Lista w `outliers_excluded.csv`.
+
+Wyniki liczbowe (zapisane w `correlations_global.csv` i `panel_key_numbers.csv`):
+- Powietrze: Nu = 0.461 Re^0.642 (R2 = 0.9981, Re 341-1596); dp = 22.84 U^1.875 (R2 = 0.9995).
+- Woda:      Nu = 0.690 Re^0.724 (R2 = 0.9982, Re 100-315);  dp = 2112 U^1.727 (R2 = 0.9999).
+- Rozprzezenie: h_air spread 2.34% (woda 3.2x), h_cold spread 5.76% (powietrze 4.7x),
+  replikat R000 vs R005 = 0.022%.
+- Profile pasmowe: powietrze -29..-41%, rozrzut 2.2-2.8x; woda -24..-53%, rozrzut 2.4-5.7x.
+- Ciecze zimne: h zmienia sie 3.7x, Q = 7.02-7.65 W; UNI10 olej/woda = 3.9x mocy pompowania.
+- Walidacja: bilans energii 0.33-0.67% (srednia na przypadek), <= 1.51% najgorszy krok;
+  fluktuacja czasowa h: powietrze 1.2-1.7%, ciecz 0.02-1.14%.
+
+Weryfikacja:
+- `python make_partner_panels.py` - OK; PNG + PDF dla obu paneli, 3 CSV.
+- Obejrzano oba PNG; poprawiono kolizje etykiet w (c), (d), (e).
+
+Uwagi / nastepne kroki:
+- Panel bez kretosci ustawia scene pod kolejny krok (brakujaca zmienna lokalna);
+  slabsze dopasowanie na poziomie pasm zostaje jako material na pytania, nie na figure.
+
+## 2026-09-03  Wariant panelu 2x2 z definicja Nu (make_partner_panels_nudef.py)
+
+Nowy skrypt Results/Plot/Partners_panel/make_partner_panels_nudef.py -> panel_partners_2x2_nudef.{png,pdf}
++ panel_key_numbers_nudef.csv. Reuzywa _data.py i paneli (b)/(c)/(d) z make_partner_panels.py;
+nadpisuje tylko panel (a).
+
+Panel (a) dostal:
+- definicje Nu = h * D_h / k_fluid w ramce (gora-prawo);
+- inset "Water / Air ratio (band medians)": h ×21.4 w gore, D_h/k ÷25 w dol,
+  iloczyn Nu ×0.85 ~ parytet -> pokazuje wprost, ze podobne Nu przy roznym Re
+  bierze sie z wzajemnego znoszenia sie duzego h wody i malego D_h/k wody.
+Liczby z band_values_R000..R005: mediany pasm h_water/h_air=20.7, (D_h/k)_water/(D_h/k)_air=0.040,
+Nu_water/Nu_air=0.83. D_h/k odzyskane jako Nu/h (nic nie przeliczane).
+
+Zakresy D_h (przeliczone z tablic pasmowych SRP, compute_band_table, Dh[m]):
+- powietrze (Fluid1): 4.66-14.80 mm po pasmach, mediana 7.95 mm
+- woda (Fluid2): 7.06-9.11 mm po pasmach, mediana 7.83 mm
+D_h praktycznie identyczne miedzy cieczami (mediany 7.95 vs 7.83, ratio 0.98) i stale
+miedzy runami (geometria, nie przeplyw) -> caly stosunek D_h/k (÷25) to k, nie D_h.
+Ramka definicji w panelu (a) mowi to wprost.
+Stary panel_partners_2x2.* nietkniety.
